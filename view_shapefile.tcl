@@ -12,14 +12,11 @@ exec tclsh $0 ${1+"$@"}
 #
 # move wrapping longitude
 # help/about page???
-# reset checkedboxlist arrow sorting direction
 # option to mask overflow shapes???
 # keyboard access to Shape list???
-# url links to good shape files???
+# url links to good shape files outside of Github????
 # some shape files want 2 column keys, e.g. cs_2021_us_county_20m wants county & state names
-# what does Draw All really do???
 # tooltips
-# WINDOWS -- are we deleting zip file too soon???
 # Splash -- don't duplicate github downloads with local ones
 #
 # DONE meridian lines
@@ -115,6 +112,8 @@ proc DoDisplay {} {
     wm title . "Shapefile Viewer"
     wm iconphoto . ::img::logo
     wm iconname . "View Shape"
+
+    LoadIcons
 
     ::ttk::frame .top
     label .top.title -textvariable S(fname,pretty) -anchor c -font $S(title_font) -bg $S(canvas,bg)
@@ -768,47 +767,47 @@ proc ToggleRanges {onoff} {
     CheckedListBox::ToggleAll $S(tree) [expr {$onoff eq "allon"}]
 }
 namespace eval ::Regions {
-    variable frame ""
+    variable frame ""  ;# Set in ControlWindow when panel is being laid out
     variable BLOCS
 
     unset -nocomplain BLOCS
     # Four US Census Bureau regions
-    set BLOCS(aa,Midwest_US,Midwest_US_Census_Region) {
+    set BLOCS(aa,Midwest_US,US_Census_Region:_Midwest) {
         "Illinois" "Indiana" "Iowa" "Kansas" "Michigan" "Minnesota" "Missouri"
         "Nebraska" "North Dakota" "Ohio" "South Dakota" "Wisconsin"}
-    set BLOCS(aa,Northeast_US,Northeast_US_Census_Region) {
+    set BLOCS(aa,Northeast_US,US_Census_Region:_Northeast) {
         "Connecticut" "Maine" "Massachusetts" "New Hampshire" "New Jersey"
         "New York" "Pennsylvania" "Rhode Island" "Vermont"}
-    set BLOCS(aa,West_US,West_US_Census_Region) {
+    set BLOCS(aa,West_US,US_Census_Region:_West) {
         "Alaska" "Arizona" "California" "Colorado" "Hawaii" "Idaho" "Montana"
         "Nevada" "New Mexico" "Oregon" "Utah" "Washington" "Wyoming"}
-    set BLOCS(aa,South_US,South_US_Census_Region) {
+    set BLOCS(aa,South_US,US_Census_Region:_South) {
         "Alabama" "Arkansas" "Delaware" "Florida" "Georgia" "Kentucky"
         "Louisiana" "Maryland" "Mississippi" "North Carolina" "Oklahoma"
         "South Carolina" "Tennessee" "Texas" "Virginia" "West Virginia"
         "District of Columbia"}
 
     # https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf
-    set BLOCS(bb,New_England,New_England_US_Census_Division) {
+    set BLOCS(bb,New_England,US_Census_Division:_New_England) {
         "Connecticut" "Maine" "Massachusetts" "New Hampshire" "Rhode Island" "Vermont"}
-    set BLOCS(bb,Middle_Atlantic,Middle_Atlantic_US_Census_Division) {
+    set BLOCS(bb,Middle_Atlantic,US_Census_Division:_Middle_Atlantic) {
         "New Jersey" "New York" "Pennsylvania"}
-    set BLOCS(bb,East_North_Central,East_North_Central_US_Census_Division) {
+    set BLOCS(bb,East_North_Central,US_Census_Division:_East_North_Central) {
         "Indiana" "Illinois" "Michigan" "Ohio" "Wisconsin"}
-    set BLOCS(bb,West_North_Central,West_North_Central_US_Census_Division) {
+    set BLOCS(bb,West_North_Central,US_Census_Division:_West_North_Central) {
         "Iowa" "Kansas" "Minnesota" "Missouri" "Nebraska" "North Dakota" "South Dakota"}
-    set BLOCS(bb,South_Atlantic,South_Atlantic_US_Census_Division) {
+    set BLOCS(bb,South_Atlantic,US_Census_Division:_South_Atlantic) {
         "Delaware" "District of Columbia" "Florida" "Georgia" "Maryland" "North Carolina"
         "South Carolina" "Virginia" "West Virginia"}
-    set BLOCS(bb,East_South_Central,East_South_Central_US_Census_Division) {
+    set BLOCS(bb,East_South_Central,US_Census_Division:_East_South_Central) {
         "Alabama" "Kentucky" "Mississippi" "Tennessee"}
-    set BLOCS(bb,West_South_Central,West_South_Central_US_Census_Division) {
+    set BLOCS(bb,West_South_Central,US_Census_Division:_West_South_Central) {
         "Arkansas" "Louisiana" "Oklahoma" "Texas"}
-    set BLOCS(bb,Mountain,Mountain_US_Census_Division) {
+    set BLOCS(bb,Mountain,US_Census_Division:_Mountain) {
         "Arizona" "Colorado" "Idaho" "New Mexico" "Montana" "Utah" "Nevada" "Wyoming"}
-    set BLOCS(bb,Pacific,Pacific_US_Census_Division) {
+    set BLOCS(bb,Pacific,US_Census_Division:_Pacific) {
         "Alaska" "California" "Hawaii" "Oregon" "Washington"}
-    set BLOCS(cc,Continental_US) {
+    set BLOCS(cc,Continental_US,US_without_Alaska_and_Hawaii) {
         "Alabama" "Arizona" "Arkansas" "California" "Colorado"
         "Connecticut" "Delaware" "District of Columbia" "Florida"
         "Georgia" "Idaho" "Illinois" "Indiana" "Iowa" "Kansas" "Kentucky"
@@ -1267,10 +1266,11 @@ namespace eval ::Github {
 proc ::Github::Open {who} {
     variable URL
 
-    destroy .splash
     if {! [info exists URL($who)]} {
-        error "$who not in URL list"
+        MyError "$who not in URL list"
+        return
     }
+    destroy .splash
     set zdata [::Github::_DownloadZip $URL($who)] ; list
     set zipName [::Github::_SaveZip $who $zdata]
     InstallZipFile $zipName
@@ -1328,25 +1328,27 @@ proc ::Github::_geturl_followRedirects {url args} {
         set url [eval ::uri::join [array get uri]]
     }
 }
+proc LoadIcons {} {
+    global S
 
+    image create photo ::img::logo -file $S(iconfile)
+    image create photo ::img::logo_small
+    ::img::logo_small copy ::img::logo -subsample 2 2
+    image create photo ::img::logo_icon
+    ::img::logo_icon copy ::img::logo -subsample 4 4
+    image create photo ::img::logo_icon_flip
+    ::img::logo_icon_flip copy ::img::logo -subsample -4 4
+}
 
 
 ################################################################
 ################################################################
 
-image create photo ::img::logo -file $S(iconfile)
-image create photo ::img::logo_small
-::img::logo_small copy ::img::logo -subsample 2 2
-image create photo ::img::logo_icon
-::img::logo_icon copy ::img::logo -subsample 4 4
-image create photo ::img::logo_icon_flip
-::img::logo_icon_flip copy ::img::logo -subsample -4 4
 
 if {[info commands __real_exit] eq ""} {
     rename exit __real_exit
 }
 rename AtExit exit
-
 
 DoDisplay
 Splash
