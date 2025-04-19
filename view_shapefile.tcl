@@ -15,11 +15,10 @@ exec tclsh $0 ${1+"$@"}
 # reset checkedboxlist arrow sorting direction
 # option to mask overflow shapes???
 # keyboard access to Shape list???
-# do a color histogram for grins
 # url links to good shape files???
 # some shape files want 2 column keys, e.g. cs_2021_us_county_20m wants county & state names
 # what does Draw All really do???
-# Southern, northern, eastern and western hemispheres?
+# tooltips
 #
 # DONE meridian lines
 # DONE progress bar or busy mouse
@@ -60,6 +59,9 @@ exec tclsh $0 ${1+"$@"}
 # DONE clearing tooltips on erase (shouldn't happen but was getting spurious tooltips)
 # DONE Organized checked, index, ids conversions to each other
 # DONE Added four US Census Bureau regions
+# DONE Added 4 hemispheres
+# DONE Removed beta filtering
+# DONE Renamed Beta Regions
 
 package require Tk
 package require cksum
@@ -145,7 +147,7 @@ proc ControlWindow {w} {
     ::ttk::frame $w.all -borderwidth 5 -relief ridge
     ::ttk::frame $w.beta -borderwidth 5 -relief ridge
     ::ttk::frame $w.buttons -borderwidth 5 -relief ridge
-    set ::Beta::frame $w.beta
+    set ::Regions::frame $w.beta
 
     grid $w.top -row 0 -sticky ew
     grid $w.items -row 1 -sticky news
@@ -178,7 +180,7 @@ proc ControlWindow {w} {
     # Drawing buttons
     set ww $w.buttons
     ::ttk::button $ww.draw1 -text "Clear & Draw" -command {DoSelectedShapes clear}
-    ::ttk::button $ww.draw2 -text "Draw All" -command {DoSelectedShapes all}
+    ::ttk::button $ww.draw2 -text "Redraw All" -command {DoSelectedShapes all}
     ::ttk::button $ww.draw3 -text "Draw New" -command {DoSelectedShapes only_new}
     ::ttk::button $ww.clear1 -text "Clear All" -command {EraseShapes erase}
     ::ttk::button $ww.clear2 -text "Clear Selected" -command {EraseShapes selected}
@@ -283,7 +285,7 @@ proc InstallNewFile {fname} {
 
     ::CheckedListBox::Clear $S(tree)
     ::CheckedListBox::AddManyItems $S(tree) $checkboxData
-    ::Beta::InstallBlocs
+    ::Regions::InstallBlocs
 }
 proc ExtractAllDBaseInfo {fname} {
     # Returns list of {row# value} from *.dbf for selected column
@@ -300,7 +302,6 @@ proc ExtractAllDBaseInfo {fname} {
     if {$column == -1} { return {} }
     set nameData [DBF::ReadRecordColumns $column 1 -1] ; list
     set nameData [PrettyNames $nameData]
-    set nameData [::Beta::FilterDBaseInfo $nameData]
     return $nameData
 }
 proc PrettyNames {nameData} {
@@ -515,8 +516,9 @@ proc TooltipClear {args} {
 proc DoOneShape {shape idx bbox} {
     global S
 
-    set clrIndex [::crc::cksum "$bbox $idx $S(bbox,cnt)"]
-    set color [lindex $S(colors) [expr {$clrIndex % [llength $S(colors)]}]]
+    set datum "$bbox $idx $S(bbox,cnt)"
+    set clrIndex [expr {[::crc::cksum $datum] % [llength $S(colors)]}]
+    set color [lindex $S(colors) $clrIndex]
 
     lassign [$shape ReadOneRecord $idx] recordNumber type record
     set type [dict get [$shape Header] shapeType]
@@ -759,17 +761,48 @@ proc ToggleRanges {onoff} {
 
     CheckedListBox::ToggleAll $S(tree) [expr {$onoff eq "allon"}]
 }
-namespace eval ::Beta {
+namespace eval ::Regions {
     variable frame ""
     variable BLOCS
-    variable FILTERS
-
-    unset -nocomplain FILTERS
-    set FILTERS(avoid) [list "UNK" ""]
-    set FILTERS(need) [list]
 
     unset -nocomplain BLOCS
-    set BLOCS(Continental_US) {
+    # Four US Census Bureau regions
+    set BLOCS(aa,Midwest_US,Midwest_US_Census_Region) {
+        "Illinois" "Indiana" "Iowa" "Kansas" "Michigan" "Minnesota" "Missouri"
+        "Nebraska" "North Dakota" "Ohio" "South Dakota" "Wisconsin"}
+    set BLOCS(aa,Northeast_US,Northeast_US_Census_Region) {
+        "Connecticut" "Maine" "Massachusetts" "New Hampshire" "New Jersey"
+        "New York" "Pennsylvania" "Rhode Island" "Vermont"}
+    set BLOCS(aa,West_US,West_US_Census_Region) {
+        "Alaska" "Arizona" "California" "Colorado" "Hawaii" "Idaho" "Montana"
+        "Nevada" "New Mexico" "Oregon" "Utah" "Washington" "Wyoming"}
+    set BLOCS(aa,South_US,South_US_Census_Region) {
+        "Alabama" "Arkansas" "Delaware" "Florida" "Georgia" "Kentucky"
+        "Louisiana" "Maryland" "Mississippi" "North Carolina" "Oklahoma"
+        "South Carolina" "Tennessee" "Texas" "Virginia" "West Virginia"
+        "District of Columbia"}
+
+    # https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf
+    set BLOCS(bb,New_England,New_England_US_Census_Division) {
+        "Connecticut" "Maine" "Massachusetts" "New Hampshire" "Rhode Island" "Vermont"}
+    set BLOCS(bb,Middle_Atlantic,Middle_Atlantic_US_Census_Division) {
+        "New Jersey" "New York" "Pennsylvania"}
+    set BLOCS(bb,East_North_Central,East_North_Central_US_Census_Division) {
+        "Indiana" "Illinois" "Michigan" "Ohio" "Wisconsin"}
+    set BLOCS(bb,West_North_Central,West_North_Central_US_Census_Division) {
+        "Iowa" "Kansas" "Minnesota" "Missouri" "Nebraska" "North Dakota" "South Dakota"}
+    set BLOCS(bb,South_Atlantic,South_Atlantic_US_Census_Division) {
+        "Delaware" "District of Columbia" "Florida" "Georgia" "Maryland" "North Carolina"
+        "South Carolina" "Virginia" "West Virginia"}
+    set BLOCS(bb,East_South_Central,East_South_Central_US_Census_Division) {
+        "Alabama" "Kentucky" "Mississippi" "Tennessee"}
+    set BLOCS(bb,West_South_Central,West_South_Central_US_Census_Division) {
+        "Arkansas" "Louisiana" "Oklahoma" "Texas"}
+    set BLOCS(bb,Mountain,Mountain_US_Census_Division) {
+        "Arizona" "Colorado" "Idaho" "New Mexico" "Montana" "Utah" "Nevada" "Wyoming"}
+    set BLOCS(bb,Pacific,Pacific_US_Census_Division) {
+        "Alaska" "California" "Hawaii" "Oregon" "Washington"}
+    set BLOCS(cc,Continental_US) {
         "Alabama" "Arizona" "Arkansas" "California" "Colorado"
         "Connecticut" "Delaware" "District of Columbia" "Florida"
         "Georgia" "Idaho" "Illinois" "Indiana" "Iowa" "Kansas" "Kentucky"
@@ -780,26 +813,9 @@ namespace eval ::Beta {
         "Rhode Island" "South Carolina" "South Dakota" "Tennessee" "Texas"
         "Utah" "Vermont" "Virginia" "Washington" "West Virginia"
         "Wisconsin" "Wyoming"}
-    # Four US Census Bureau regions
-    set BLOCS(Midwestern_US) {
-        "Illinois" "Indiana" "Iowa" "Kansas" "Michigan" "Minnesota" "Missouri"
-        "Nebraska" "North Dakota" "Ohio" "South Dakota" "Wisconsin"}
-    set BLOCS(Northeastern_US) {
-        "Connecticut" "Maine" "Massachusetts" "New Hampshire" "New Jersey"
-        "New York" "Pennsylvania" "Rhode Island" "Vermont"}
-    set BLOCS(Western_US) {
-        "Alaska" "Arizona" "California" "Colorado" "Hawaii" "Idaho" "Montana"
-        "Nevada" "New Mexico" "Oregon" "Utah" "Washington" "Wyoming"}
-    set BLOCS(Southern_US) {
-        "Alabama" "Arkansas" "Delaware" "Florida" "Georgia" "Kentucky"
-        "Louisiana" "Maryland" "Mississippi" "North Carolina" "Oklahoma"
-        "South Carolina" "Tennessee" "Texas" "Virginia" "West Virginia"
-        "District of Columbia"}
-    # Also: nine CB divisions: "East North Central" "East South Central" "Middle Atlantic"
-    # "New England" "South Atlantic" "West North Central" "West South Central" "Mountain" "Pacific"
 
     # https://www.countries-ofthe-world.com/
-    set BLOCS(Europe) {
+    set BLOCS(aa,Europe) {
         "Albania" "Andorra" "Armenia" "Austria" "Azerbaijan" "Belarus"
         "Belgium" "Bosnia and Herzegovina" "Bulgaria" "Croatia" "Cyprus"
         "Czech Republic" "Denmark" "Estonia" "Finland" "France" "Georgia" "Germany"
@@ -811,7 +827,7 @@ namespace eval ::Beta {
         "Ukraine" "United Kingdom" "Vatican City"
         "Gibraltar" "Faroe Islands" "Guernsey" "Isle of Man" "Azores" "Jersey"
         "Svalbard"}
-    set BLOCS(Continental_Europe) {
+    set BLOCS(aa,Continental_Europe) {
         "Albania" "Andorra" "Austria" "Azores" "Belarus" "Belgium"
         "Bosnia and Herzegovina" "Bulgaria" "Croatia" "Czech Republic"
         "Denmark" "Estonia" "Faroe Islands" "Finland" "France" "Germany"
@@ -821,7 +837,7 @@ namespace eval ::Beta {
         "North Macedonia" "Norway" "Poland" "Portugal" "Romania" "San Marino"
         "Serbia" "Slovakia" "Slovenia" "Spain" "Svalbard" "Sweden"
         "Switzerland" "Ukraine" "United Kingdom" "Vatican City"}
-    set BLOCS(Asia) {
+    set BLOCS(aa,Asia) {
         "Afghanistan" "Armenia" "Azerbaijan" "Bahrain" "Bangladesh"
         "Bhutan" "Brunei Darussalam" "Cambodia" "China" "Cyprus" "Georgia" "India"
         "Indonesia" "Iran" "Iraq" "Israel" "Japan" "Jordan" "Kazakhstan"
@@ -832,7 +848,7 @@ namespace eval ::Beta {
         "Tajikistan" "Thailand" "Timor-Leste" "Turkiye" "Turkmenistan"
         "United Arab Emirates" "Uzbekistan" "Vietnam" "Yemen"
         "Palestinian Territory"}
-    set BLOCS(Africa) {
+    set BLOCS(aa,Africa) {
         "Algeria" "Angola" "Benin" "Botswana" "Burkina Faso" "Burundi"
         "Cabo Verde" "Cameroon" "Central African Republic" "Chad"
         "Comoros" "Congo" "Congo DRC" "Côte d'Ivoire" "Djibouti" "Egypt"
@@ -843,7 +859,7 @@ namespace eval ::Beta {
         "Rwanda" "Sao Tome and Principe" "Senegal" "Seychelles"
         "Sierra Leone" "Somalia" "South Africa" "South Sudan" "Sudan"
         "Tanzania" "Togo" "Tunisia" "Uganda" "Zambia" "Zimbabwe"}
-    set BLOCS(North_America) {
+    set BLOCS(aa,North_America) {
         "Anguilla" "Antigua and Barbuda" "Aruba" "Bahamas" "Barbados"
         "Belize" "Bermuda" "Bonaire" "British Virgin Islands" "Canada"
         "Cayman Islands" "Costa Rica" "Cuba" "Curacao" "Dominica"
@@ -855,23 +871,23 @@ namespace eval ::Beta {
         "Saint Vincent and the Grenadines" "Sint Maarten"
         "Trinidad and Tobago" "Turks and Caicos Islands"
         "US Virgin Islands" "United States"}
-    set BLOCS(South_America) {
+    set BLOCS(aa,South_America) {
         "Argentina" "Bolivia" "Brazil" "Chile" "Colombia" "Ecuador"
         "Falkland Islands" "French Guiana" "Guyana" "Paraguay" "Peru"
         "South Georgia and South Sandwich Islands" "Suriname" "Uruguay" "Venezuela"}
-    set BLOCS(Oceania) {
+    set BLOCS(aa,Oceania) {
         "American Samoa" "Australia" "Cook Islands" "Fiji"
         "French Polynesia" "Guam" "Kiribati" "Marshall Islands"
         "Micronesia" "Nauru" "New Caledonia" "New Zealand" "Niue"
         "Norfolk Island" "Northern Mariana Islands" "Palau"
         "Papua New Guinea" "Pitcairn" "Samoa" "Solomon Islands"
         "Tokelau" "Tonga" "Tuvalu" "Vanuatu" "Wallis and Futuna"}
-    set BLOCS(|00@Miscellany) {
+    set BLOCS(bb,Miscellany) {
         "Antarctica" "Bouvet Island" "British Indian Ocean Territory"
         "Canarias" "Christmas Island" "Cocos Islands" "French Southern Territories"
         "Glorioso Islands" "Heard Island and McDonald Islands" "Juan De Nova Island"
         "Madeira" "Mayotte" "Réunion" "Saint Helena" "United States Minor Outlying Islands"}
-    set BLOCS(|01@Western_Hemisphere) {
+    set BLOCS(cc,Western_Hemisphere,All_countries_in_or_partially_in@the_western_hemisphere) {
         "Algeria" "American Samoa" "Anguilla" "Antarctica" "Antigua and Barbuda" "Argentina"
         "Aruba" "Azores" "Bahamas" "Barbados" "Belize" "Bermuda" "Bolivia" "Bonaire" "Brazil"
         "British Virgin Islands" "Burkina Faso" "Cabo Verde" "Canada" "Canarias" "Cayman Islands"
@@ -889,7 +905,7 @@ namespace eval ::Beta {
         "Tokelau" "Tonga" "Trinidad and Tobago" "Turks and Caicos Islands" "United Kingdom"
         "United States" "United States Minor Outlying Islands" "Uruguay" "US Virgin Islands"
         "Venezuela" "Wallis and Futuna"}
-    set BLOCS(|01@Eastern_Hemisphere) {
+    set BLOCS(cc,Eastern_Hemisphere,All_countries_in_or_partially_in@the_eastern_hemisphere) {
         "Afghanistan" "Albania" "Algeria" "Andorra" "Angola" "Antarctica" "Armenia" "Australia"
         "Austria" "Azerbaijan" "Bahrain" "Bangladesh" "Belarus" "Belgium" "Benin" "Bhutan"
         "Bosnia and Herzegovina" "Botswana" "Bouvet Island" "British Indian Ocean Territory"
@@ -915,7 +931,7 @@ namespace eval ::Beta {
         "United Arab Emirates" "United Kingdom" "United States"
         "United States Minor Outlying Islands" "Uzbekistan" "Vanuatu" "Vatican City" "Vietnam"
         "Yemen" "Zambia" "Zimbabwe"}
-    set BLOCS(|01@Northern_Hemisphere) {
+    set BLOCS(cc,Northern_Hemisphere,All_countries_in_or_partially_in@the_northern_hemisphere) {
         "Afghanistan" "Albania" "Algeria" "Andorra" "Anguilla" "Antigua and Barbuda" "Armenia"
         "Aruba" "Austria" "Azerbaijan" "Azores" "Bahamas" "Bahrain" "Bangladesh" "Barbados"
         "Belarus" "Belgium" "Belize" "Benin" "Bermuda" "Bhutan" "Bonaire" "Bosnia and Herzegovina"
@@ -945,7 +961,7 @@ namespace eval ::Beta {
         "United Arab Emirates" "United Kingdom" "United States"
         "United States Minor Outlying Islands" "US Virgin Islands" "Uzbekistan" "Vatican City"
         "Venezuela" "Vietnam" "Yemen"}
-    set BLOCS(|01@Southern_Hemisphere) {
+    set BLOCS(cc,Southern_Hemisphere,All_countries_in_or_partially_in@the_southern_hemisphere) {
         "American Samoa" "Angola" "Antarctica" "Argentina" "Australia" "Bolivia" "Botswana"
         "Bouvet Island" "Brazil" "British Indian Ocean Territory" "Burundi" "Chile"
         "Christmas Island" "Cocos Islands" "Colombia" "Comoros" "Congo" "Congo DRC"
@@ -960,36 +976,37 @@ namespace eval ::Beta {
         "United States Minor Outlying Islands" "Uruguay" "Vanuatu" "Wallis and Futuna" "Zambia"
         "Zimbabwe"}
 }
-proc ::Beta::InstallBlocs {} {
+proc ::Regions::InstallBlocs {} {
     variable frame
 
     destroy {*}[winfo child $frame]
     grid forget $frame
+    ::tooltip::clear $frame._*
 
-    set which [::Beta::WhichBlocs]
+    set which [::Regions::WhichBlocs]
     if {$which eq ""} return
 
     grid $frame -row 3 -sticky news
 
-    set row 0
+    set row -1
     set col -1
     foreach bloc $which {
-        set w $frame._$bloc
-        set name $bloc
-        regsub {^\|.*@} $name "" name
-        set name [string map {"_" " "} $name]
-        ::ttk::button $w -text $name -command [list ::Beta::ToggleBlocOn $bloc]
+        set col [expr {($col + 1) % 4}]
+        incr row [expr {$col == 0}]
+        set w $frame.$row,$col
 
-        incr col
-        if {$col == 4} {
-            incr row
-            set col 0
+        lassign [split [string map {"_" " "} $bloc] ","] _ name tooltip
+        ::ttk::button $w -text $name -command [list ::Regions::ToggleBlocOn $bloc]
+        if {$tooltip ne ""} {
+            set tooltip [string map {@ "\n"} $tooltip]
+            ::tooltip::tooltip $w $tooltip
         }
-        grid $w -row $row -column $col
+
+        grid $w -row $row -column $col -sticky ew
     }
     grid columnconfigure $frame all -weight 1 -uniform a
 }
-proc ::Beta::ToggleBlocOn {bloc} {
+proc ::Regions::ToggleBlocOn {bloc} {
     variable BLOCS
     global S
 
@@ -1009,21 +1026,22 @@ proc ::Beta::ToggleBlocOn {bloc} {
 }
 
 
-proc ::Beta::WhichBlocs {} {
+proc ::Regions::WhichBlocs {} {
     variable BLOCS
     global S
 
-    set masterList [lmap x $S(dbData) { lindex $x 1 }]
+    set masterNameList [lmap x $S(dbData) { lindex $x 1 }]
 
     set result {}
     foreach bloc [lsort -dictionary [array names BLOCS]] {
-        if {[::Beta::Contains $BLOCS($bloc) $masterList]} {
+        if {[::Regions::Contains $bloc $BLOCS($bloc) $masterNameList]} {
             lappend result $bloc
         }
     }
     return $result
 }
-proc ::Beta::Contains {subList masterList} {
+proc ::Regions::Contains {who subList masterList} {
+    # NB. names such as Georgia and Puerto Rico can be in multiple domains
     set found 0
     set missing 0
     foreach item $subList {
@@ -1035,33 +1053,6 @@ proc ::Beta::Contains {subList masterList} {
     }
     if {$found > $missing} { return True }
     return False
-}
-proc ::Beta::FilterDBaseInfo {nameData} {
-    # Checks the first name in each nameDatum to see if it
-    # should be avoided or required.
-
-    variable FILTERS
-
-    if {$FILTERS(need) eq "" && $FILTERS(avoid) eq ""} { return $nameData }
-    set FILTERS(dropped) {}
-    set FILTERS(keptout) {}
-
-    set result {}
-    foreach v $nameData {
-        set name [lindex $v 1]
-        if {$name in $FILTERS(avoid)} {
-            lappend FILTERS(dropped) $name
-            continue
-        }
-        if {$FILTERS(need) ne ""} {
-            if {$name ni $FILTERS(need)} {
-                lappend FILTERS(keptout) $name
-                continue
-            }
-        }
-        lappend result $v
-    }
-    return $result
 }
 proc DrawMeridians {} {
     global S
