@@ -60,6 +60,7 @@ proc ::CheckedListBox::Create {parent headers {headerSizes {}}} {
     #bind $w <<TreeviewSelect>> {set ::id [%W selection]} ;# Debugging
     bind $w <1> [list ::CheckedListBox::_ButtonPress %W %x %y]
     bind $w <space> [list ::CheckedListBox::_SpaceKeyPress %W]
+    bind $w <KeyPress> {::CheckedListBox::_KeyPress %W %A}
 
     grid $w $parent.vsb -sticky nsew
     grid $parent.hsb    -sticky nsew
@@ -86,7 +87,6 @@ proc ::CheckedListBox::AddManyItems {w data} {
 
     array unset ButtonState $w,*
     $w delete [$w child {}]
-    set lnum -1
     foreach datum $data {
         set id [$w insert {} end -values $datum -text "" -image ::img::cb(0)]
         $w item $id -tags $id
@@ -299,6 +299,30 @@ proc ::CheckedListBox::_SpaceKeyPress {w} {
     foreach id $select {
         set ButtonState($w,$id) $how
         $w item $id -image ::img::cb($how)
+    }
+}
+proc ::CheckedListBox::_KeyPress {w char} {
+    # Move selection to the next item that starts with $char
+    set lchar [string tolower $char]
+
+    set focus [$w focus]
+    set children [$w children {}]
+    set startingIndex [expr {$focus eq "" ? -1 : [lsearch $children $focus]}]
+
+    set found ""
+    for {set offset 1} {$offset < [llength $children]} {incr offset} {
+        set idx [expr {($startingIndex + $offset) % [llength $children]}]
+        set child [lindex $children $idx]
+
+        set title [lindex [$w item $child -values] 0]
+        set first [string tolower [string index $title 0]]
+        if {$first eq $lchar} {
+            set found $child
+            break
+        }
+    }
+    if {$found ne ""} {
+        ttk::treeview::SelectOp $w $found choose
     }
 }
 
