@@ -866,11 +866,99 @@ namespace eval ::Beta {
         "Norfolk Island" "Northern Mariana Islands" "Palau"
         "Papua New Guinea" "Pitcairn" "Samoa" "Solomon Islands"
         "Tokelau" "Tonga" "Tuvalu" "Vanuatu" "Wallis and Futuna"}
-    set BLOCS(ZZ_Miscellany) {
+    set BLOCS(|00@Miscellany) {
         "Antarctica" "Bouvet Island" "British Indian Ocean Territory"
         "Canarias" "Christmas Island" "Cocos Islands" "French Southern Territories"
         "Glorioso Islands" "Heard Island and McDonald Islands" "Juan De Nova Island"
         "Madeira" "Mayotte" "Réunion" "Saint Helena" "United States Minor Outlying Islands"}
+    set BLOCS(|01@Western_Hemisphere) {
+        "Algeria" "American Samoa" "Anguilla" "Antarctica" "Antigua and Barbuda" "Argentina"
+        "Aruba" "Azores" "Bahamas" "Barbados" "Belize" "Bermuda" "Bolivia" "Bonaire" "Brazil"
+        "British Virgin Islands" "Burkina Faso" "Cabo Verde" "Canada" "Canarias" "Cayman Islands"
+        "Chile" "Colombia" "Cook Islands" "Costa Rica" "Côte d'Ivoire" "Cuba" "Curacao" "Dominica"
+        "Dominican Republic" "Ecuador" "El Salvador" "Falkland Islands" "Faroe Islands" "Fiji"
+        "France" "French Guiana" "French Polynesia" "Gambia" "Ghana" "Gibraltar" "Greenland"
+        "Grenada" "Guadeloupe" "Guatemala" "Guernsey" "Guinea" "Guinea-Bissau" "Guyana" "Haiti"
+        "Honduras" "Iceland" "Ireland" "Isle of Man" "Jamaica" "Jersey" "Kiribati" "Liberia"
+        "Madeira" "Mali" "Martinique" "Mauritania" "Mexico" "Montserrat" "Morocco" "New Zealand"
+        "Nicaragua" "Niue" "Panama" "Paraguay" "Peru" "Pitcairn" "Portugal" "Puerto Rico"
+        "Russian Federation" "Saba" "Saint Barthelemy" "Saint Eustatius" "Saint Helena"
+        "Saint Kitts and Nevis" "Saint Lucia" "Saint Martin" "Saint Pierre and Miquelon"
+        "Saint Vincent and the Grenadines" "Samoa" "Senegal" "Sierra Leone" "Sint Maarten"
+        "South Georgia and South Sandwich Islands" "Spain" "Suriname" "Svalbard" "Togo"
+        "Tokelau" "Tonga" "Trinidad and Tobago" "Turks and Caicos Islands" "United Kingdom"
+        "United States" "United States Minor Outlying Islands" "Uruguay" "US Virgin Islands"
+        "Venezuela" "Wallis and Futuna"}
+    set BLOCS(|01@Eastern_Hemisphere) {
+        "Afghanistan" "Albania" "Algeria" "Andorra" "Angola" "Antarctica" "Armenia" "Australia"
+        "Austria" "Azerbaijan" "Bahrain" "Bangladesh" "Belarus" "Belgium" "Benin" "Bhutan"
+        "Bosnia and Herzegovina" "Botswana" "Bouvet Island" "British Indian Ocean Territory"
+        "Brunei Darussalam" "Bulgaria" "Burkina Faso" "Burundi" "Cambodia" "Cameroon"
+        "Central African Republic" "Chad" "China" "Christmas Island" "Cocos Islands" "Comoros"
+        "Congo" "Congo DRC" "Croatia" "Cyprus" "Czech Republic" "Denmark" "Djibouti" "Egypt"
+        "Equatorial Guinea" "Eritrea" "Estonia" "Eswatini" "Ethiopia" "Fiji" "Finland" "France"
+        "French Southern Territories" "Gabon" "Georgia" "Germany" "Ghana" "Glorioso Islands"
+        "Greece" "Guam" "Heard Island and McDonald Islands" "Hungary" "India" "Indonesia" "Iran"
+        "Iraq" "Israel" "Italy" "Japan" "Jordan" "Juan De Nova Island" "Kazakhstan" "Kenya"
+        "Kiribati" "Kuwait" "Kyrgyzstan" "Laos" "Latvia" "Lebanon" "Lesotho" "Libya"
+        "Liechtenstein" "Lithuania" "Luxembourg" "Madagascar" "Malawi" "Malaysia" "Maldives"
+        "Mali" "Malta" "Marshall Islands" "Mauritius" "Mayotte" "Micronesia" "Moldova" "Monaco"
+        "Mongolia" "Montenegro" "Mozambique" "Myanmar" "Namibia" "Nauru" "Nepal" "Netherlands"
+        "New Caledonia" "New Zealand" "Niger" "Nigeria" "Norfolk Island" "North Korea"
+        "North Macedonia" "Northern Mariana Islands" "Norway" "Oman" "Pakistan" "Palau"
+        "Palestinian Territory" "Papua New Guinea" "Philippines" "Poland" "Qatar" "Réunion"
+        "Romania" "Russian Federation" "Rwanda" "San Marino" "Sao Tome and Principe"
+        "Saudi Arabia" "Serbia" "Seychelles" "Singapore" "Slovakia" "Slovenia" "Solomon Islands"
+        "Somalia" "South Africa" "South Korea" "South Sudan" "Spain" "Sri Lanka" "Sudan"
+        "Svalbard" "Sweden" "Switzerland" "Syria" "Tajikistan" "Tanzania" "Thailand"
+        "Timor-Leste" "Togo" "Tunisia" "Turkiye" "Turkmenistan" "Tuvalu" "Uganda" "Ukraine"
+        "United Arab Emirates" "United Kingdom" "United States"
+        "United States Minor Outlying Islands" "Uzbekistan" "Vanuatu" "Vatican City" "Vietnam"
+        "Yemen" "Zambia" "Zimbabwe"}
+    set BLOCS(|01@Northern_Hemisphere) {
+        "Afghanistan" "Albania" "Algeria" "Andorra" "Anguilla" "Antigua and Barbuda" "Armenia"
+        "Aruba" "Austria" "Azerbaijan" "Azores" "Bahamas" "Bahrain" "Bangladesh" "Barbados"
+        "Belarus" "Belgium" "Belize" "Benin" "Bermuda" "Bhutan" "Bonaire" "Bosnia and Herzegovina"
+        "Brazil" "British Virgin Islands" "Brunei Darussalam" "Bulgaria" "Burkina Faso"
+        "Cabo Verde" "Cambodia" "Cameroon" "Canada" "Canarias" "Cayman Islands"
+        "Central African Republic" "Chad" "China" "Colombia" "Congo" "Congo DRC" "Costa Rica"
+        "Côte d'Ivoire" "Croatia" "Cuba" "Curacao" "Cyprus" "Czech Republic" "Denmark" "Djibouti"
+        "Dominica" "Dominican Republic" "Ecuador" "Egypt" "El Salvador" "Equatorial Guinea"
+        "Eritrea" "Estonia" "Ethiopia" "Faroe Islands" "Finland" "France" "French Guiana"
+        "Gabon" "Gambia" "Georgia" "Germany" "Ghana" "Gibraltar" "Greece" "Greenland" "Grenada"
+        "Guadeloupe" "Guam" "Guatemala" "Guernsey" "Guinea" "Guinea-Bissau" "Guyana" "Haiti"
+        "Honduras" "Hungary" "Iceland" "India" "Indonesia" "Iran" "Iraq" "Ireland" "Isle of Man"
+        "Israel" "Italy" "Jamaica" "Japan" "Jersey" "Jordan" "Kazakhstan" "Kenya" "Kiribati"
+        "Kuwait" "Kyrgyzstan" "Laos" "Latvia" "Lebanon" "Liberia" "Libya" "Liechtenstein"
+        "Lithuania" "Luxembourg" "Madeira" "Malaysia" "Maldives" "Mali" "Malta" "Marshall Islands"
+        "Martinique" "Mauritania" "Mexico" "Micronesia" "Moldova" "Monaco" "Mongolia" "Montenegro"
+        "Montserrat" "Morocco" "Myanmar" "Nepal" "Netherlands" "Nicaragua" "Niger" "Nigeria"
+        "North Korea" "North Macedonia" "Northern Mariana Islands" "Norway" "Oman" "Pakistan"
+        "Palau" "Palestinian Territory" "Panama" "Philippines" "Poland" "Portugal" "Puerto Rico"
+        "Qatar" "Romania" "Russian Federation" "Saba" "Saint Barthelemy" "Saint Eustatius"
+        "Saint Kitts and Nevis" "Saint Lucia" "Saint Martin" "Saint Pierre and Miquelon"
+        "Saint Vincent and the Grenadines" "San Marino" "Sao Tome and Principe" "Saudi Arabia"
+        "Senegal" "Serbia" "Sierra Leone" "Singapore" "Sint Maarten" "Slovakia" "Slovenia"
+        "Somalia" "South Korea" "South Sudan" "Spain" "Sri Lanka" "Sudan" "Suriname" "Svalbard"
+        "Sweden" "Switzerland" "Syria" "Tajikistan" "Thailand" "Togo" "Trinidad and Tobago"
+        "Tunisia" "Turkiye" "Turkmenistan" "Turks and Caicos Islands" "Uganda" "Ukraine"
+        "United Arab Emirates" "United Kingdom" "United States"
+        "United States Minor Outlying Islands" "US Virgin Islands" "Uzbekistan" "Vatican City"
+        "Venezuela" "Vietnam" "Yemen"}
+    set BLOCS(|01@Southern_Hemisphere) {
+        "American Samoa" "Angola" "Antarctica" "Argentina" "Australia" "Bolivia" "Botswana"
+        "Bouvet Island" "Brazil" "British Indian Ocean Territory" "Burundi" "Chile"
+        "Christmas Island" "Cocos Islands" "Colombia" "Comoros" "Congo" "Congo DRC"
+        "Cook Islands" "Ecuador" "Eswatini" "Falkland Islands" "Fiji" "French Polynesia"
+        "French Southern Territories" "Gabon" "Glorioso Islands"
+        "Heard Island and McDonald Islands" "Indonesia" "Juan De Nova Island" "Kenya"
+        "Lesotho" "Madagascar" "Malawi" "Maldives" "Mauritius" "Mayotte" "Mozambique"
+        "Namibia" "Nauru" "New Caledonia" "New Zealand" "Niue" "Norfolk Island" "Papua New Guinea"
+        "Paraguay" "Peru" "Pitcairn" "Réunion" "Rwanda" "Saint Helena" "Samoa" "Seychelles"
+        "Solomon Islands" "Somalia" "South Africa" "South Georgia and South Sandwich Islands"
+        "Tanzania" "Timor-Leste" "Tokelau" "Tonga" "Tuvalu" "Uganda"
+        "United States Minor Outlying Islands" "Uruguay" "Vanuatu" "Wallis and Futuna" "Zambia"
+        "Zimbabwe"}
 }
 proc ::Beta::InstallBlocs {} {
     variable frame
@@ -887,7 +975,9 @@ proc ::Beta::InstallBlocs {} {
     set col -1
     foreach bloc $which {
         set w $frame._$bloc
-        set name [string map {ZZ_ "" _ " " } $bloc]
+        set name $bloc
+        regsub {^\|.*@} $name "" name
+        set name [string map {"_" " "} $name]
         ::ttk::button $w -text $name -command [list ::Beta::ToggleBlocOn $bloc]
 
         incr col
@@ -1150,6 +1240,37 @@ proc AtExit {{returnCode 0}} {
         catch {file delete -force -- $S(tempdir)}
     }
     __real_exit $returnCode
+}
+
+proc Hemispheres {} {
+    global S
+
+    unset -nocomplain HEMIS
+
+    set hemispheres {Western_Hemisphere Eastern_Hemisphere Northern_Hemisphere Southern_Hemisphere}
+    foreach hemi $hemispheres { set HEMIS($hemi) {} }
+
+    set recordCount [$S(shape) RecordCount]
+    for {set idx 1} {$idx <= $recordCount} {incr idx} {
+        lassign [$S(shape) ReadOneRecord $idx] recordNumber type record
+        set bbox [dict get $record box]
+        lassign $bbox left bottom right top
+
+        set name [lindex $S(dbData) $idx-1 1]
+        if {$name eq ""} continue
+
+        if {$left <= 0} {lappend HEMIS(Western_Hemisphere) $name}
+        if {$right >= 0} {lappend HEMIS(Eastern_Hemisphere) $name}
+        if {$top >= 0} {lappend HEMIS(Northern_Hemisphere) $name}
+        if {$bottom <= 0} {lappend HEMIS(Southern_Hemisphere) $name}
+    }
+    set code ""
+    foreach hemi $hemispheres {
+        set values [join $HEMIS($hemi) "\" \""]
+        append code "    set BLOCS($hemi) {\n"
+        append code "        \"$values\"}\n"
+    }
+    return $code
 }
 
 
