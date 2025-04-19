@@ -1,0 +1,377 @@
+#!/bin/sh
+# Restart with tcl: -*- mode: tcl; tab-width: 8; -*- \
+exec tclsh $0 ${1+"$@"}
+
+##+##########################################################################
+#
+# dump_shapefile.tsh -- uses the shapefile package to dump out contents of shapefiles.
+# by Keith Vetter 2025-02-08
+#
+
+set shapefile [file join [file dirname $argv0] shapefile.tcl]
+set n [catch {source $shapefile} emsg]
+if {[info commands ::Shapefile::Go] eq ""} {
+    puts stderr "Error: Shapefile package not loaded ($shapefile)\n$emsg"
+    exit 1
+}
+
+array set shapeTypes {0 Null
+    1 Point 3 PolyLine 5 Polygon 8 MultiPoint
+    11 PointZ 13 PolyLineZ 15 PolygonZ 18 MultiPointZ
+    21 PointM 23 PolyLineM 25 PolygonM 28 MultiPointM
+    31 MultiPatch}
+
+array set OPTIONS {verbose 0 range {} log NONE}
+array set summary {count 0 data {} max 10}
+
+interp alias {} ShowType0  {} ShowTypeNull   ;# Null
+
+interp alias {} ShowType1  {} ShowTypePoint  ;# Point
+interp alias {} ShowType11 {} ShowTypePoint  ;# PointZ
+interp alias {} ShowType21 {} ShowTypePoint  ;# PointM
+
+interp alias {} ShowType3  {} ShowTypePoly   ;# PolyLine
+interp alias {} ShowType13 {} ShowTypePoly   ;# PolyLineZ
+interp alias {} ShowType23 {} ShowTypePoly   ;# PolyLineM
+
+interp alias {} ShowType5  {} ShowTypePoly   ;# Polygon
+interp alias {} ShowType15 {} ShowTypePoly   ;# PolygonZ
+interp alias {} ShowType25 {} ShowTypePoly   ;# PolygonM
+
+interp alias {} ShowType8  {} ShowTypeMultiPoint ;# MultiPoint
+interp alias {} ShowType18  {} ShowTypeMultiPoint ;# MultiPointZ
+interp alias {} ShowType28  {} ShowTypeMultiPoint ;# MultiPointM
+
+interp alias {} ShowType31  {} ShowTypeMultiPatch ;# MultiPatch
+
+proc ShowTypeNull {recordNumber type record} {
+    # Displays the contents of record type 0 (Null)
+    global OPTIONS summary
+
+    if {$OPTIONS(verbose) <= 2} {
+        if {$summary(count) < $summary(max)} {
+            lappend summary(data) Null
+        }
+    }
+
+    if {$OPTIONS(verbose) >= 3} {
+        set line [format "   Record Number: %3d  Null" $recordNumber]
+        puts $line
+    }
+
+}
+
+proc ShowTypePoint {recordNumber type record} {
+    # Displays the contents of record type 1 (Point), 11 (PointZ) or 21 (PointM)
+    global OPTIONS summary
+
+    set params {pointX pointY pointZ measureM}
+    unset -nocomplain arr
+
+    foreach name $params {
+        if {[dict exists $record $name]} {
+            set arr($name) [dict get $record $name]
+        }
+    }
+
+    if {$OPTIONS(verbose) <= 2} {
+        # Each datum is pointX, pointY, pointZ and measureM if they exist
+        if {$summary(count) < $summary(max)} {
+            set datum {}
+            foreach name $params {
+                if {[info exists arr($name)]} {
+                    lappend datum $arr($name)
+                }
+            }
+            lappend summary(data) $datum
+        }
+    } elseif {$OPTIONS(verbose) >= 3} {
+        set line [format "   Record Number: %3d" $recordNumber]
+        foreach name $params {
+            if {[info exists arr($name)]} {
+                append line "  $name: [PrettyNumber $arr($name)]"
+            }
+        }
+        puts $line
+    }
+}
+
+proc ShowTypePoly {recordNumber type record} {
+    # Displays the content for Shape Type 3 PolyLine, 5 Polygon, 13 PolyLineZ 15 PolygonZ
+    # 23 PolyLineM, 25 PolygonM
+
+    global OPTIONS summary
+    set ptype $::shapeTypes($type)
+
+    set numParts [dict get $record numParts]
+    set numPoints [dict get $record numPoints]
+    set parts [dict get $record parts]
+
+    if {$OPTIONS(verbose) <= 2} {
+        if {$summary(count) < $summary(max)} {
+            lappend summary(data) $numPoints
+        }
+    } elseif {$OPTIONS(verbose) >= 3} {
+        set line [format "   Record Number: %3d  %s  Points: %6d   Parts: %4d" \
+                      $recordNumber $ptype $numPoints $numParts]
+        set params {minZ maxZ minM maxM}
+        foreach name $params {
+            if {[dict exists $record $name]} {
+                append line "   $name: [PrettyNumber [dict get $record $name]]"
+            }
+        }
+        puts $line
+
+        if {$OPTIONS(verbose) >= 4} {
+            set bbox [join [lmap x [dict get $record box] { PrettyNumber $x }] " "]
+            puts "        Bounding box: $bbox"
+            lappend parts $numPoints
+            for {set idx 0} {$idx < $numParts} {incr idx} {
+                set low [lindex $parts $idx]
+                set high [lindex $parts $idx+1]
+                set count [expr {$high - $low}]
+                set line [format "        Part %2d: Points: %-15s" [expr {$idx+1}]  $count]
+                puts $line
+            }
+        }
+    }
+}
+proc ShowTypeMultiPoint {recordNumber type record} {
+    # Displays the contents of record type 8 (MultiPoint), 18 (MultiPointZ), 28 (MultiPointM)
+    global OPTIONS summary
+
+    set ptype [dict get $record pretty]
+    set box [dict get $record box]
+    set numPoints [dict get $record numPoints]
+
+    if {$OPTIONS(verbose) <= 2} {
+        if {$summary(count) < $summary(max)} {
+            lappend summary(data) [dict get $record numPoints]
+        }
+    } elseif {$OPTIONS(verbose) >= 3} {
+        set line [format "   Record Number: %3d  %s  Points: %6d" \
+                      $recordNumber $ptype $numPoints]
+
+        foreach name {minZ maxZ minM maxM} {
+            if {[dict exists $record $name]} {
+                append line "  $name: [PrettyNumber [dict get $record $name]]"
+            }
+        }
+        puts $line
+        if {$OPTIONS(verbose) >= 4} {
+            set bbox [join [lmap x [dict get $record box] { PrettyNumber $x }] " "]
+            puts "        Bounding box: $bbox"
+        }
+    }
+
+}
+
+proc ShowTypeMultiPatch {recordNumber type record} {
+    # Displays the contents of record type 31 MultiPointPatch
+    global OPTIONS summary
+    set ptype $::shapeTypes($type)
+
+    set numParts [dict get $record numParts]
+    set numPoints [dict get $record numPoints]
+    set parts [dict get $record parts]
+
+    if {$OPTIONS(verbose) <= 2} {
+        if {$summary(count) < $summary(max)} {
+            lappend summary(data) $numPoints
+        }
+    } elseif {$OPTIONS(verbose) >= 3} {
+        set line [format "   Record Number: %3d  %s  Points: %6d   Parts: %4d" \
+                      $recordNumber $ptype $numPoints $numParts]
+        set params {minZ maxZ minM maxM}
+        foreach name $params {
+            if {[dict exists $record $name]} {
+                append line "   $name: [PrettyNumber [dict get $record $name]]"
+            }
+        }
+        puts $line
+        if {$OPTIONS(verbose) >= 4} {
+            set bbox [join [lmap x [dict get $record box] { PrettyNumber $x }] " "]
+            puts "        Bounding box: $bbox"
+        }
+    }
+}
+proc PrettyNumber {num} {
+    if {! [string is double $num]} { return $num }
+    if {[string is integer $num]} { return [format "%-8d" $num] }
+    set pretty [format "%.6f" $num]
+    return [string range $pretty 0 6]
+}
+proc ExpandRange {arg} {
+    # Turns "12" "1,3,6" or "1-5,7,10-11" into set of integers
+
+    if {$arg eq ""} { ERROR "Error: no argument given for --range" }
+
+    set result {}
+    foreach piece [split $arg ","] {
+        if {$piece eq ""} { ERROR "Error: mal-formed range: empty piece" }
+        if {[string first "-" $piece] == -1} {
+            if {! [string is integer -strict $piece]} { ERROR "Error: non-integer range '$piece'" }
+            lappend result $piece
+        } else {
+            lassign [split $piece "-"] lo hi
+            if {! [string is integer -strict $lo]} { ERROR "Error: non-integer range '$lo-$hi'" }
+            if {! [string is integer -strict $hi]} { ERROR "Error: non-integer range '$lo-$hi'" }
+            if {$hi eq ""} { ERROR "Error: mal-formed range: $piece" }
+            for {set idx $lo} {$idx <= $hi} {incr idx} {
+                lappend result $idx
+            }
+        }
+    }
+    set result [lsort -unique -integer $result]
+    return $result
+}
+
+proc ERROR {emsg} {
+    puts stderr $emsg
+    exit 1
+}
+proc Help {{emsg ""}} {
+    if {$emsg ne ""} { puts stderr $emsg }
+
+    set usage "usage: [file tail $::argv0] -v -vv -vvv -vvvv"
+    append usage " --range 1,3-5,9 shapefile.shp shapefile2.shp..."
+    puts stderr $usage
+    exit 0
+}
+
+proc ParseArgs {argv} {
+    global OPTIONS
+
+    if {[lsearch $argv "-h"] > -1 || [lsearch $argv "--help"] > -1} Help
+
+    while True {
+        set n [lsearch -regexp $argv "^-v+"]
+        if {$n > -1} {
+            incr OPTIONS(verbose) [expr {-1 + [string length [lindex $argv $n]]}]
+            set argv [lreplace $argv $n $n]
+            continue
+        }
+        set n [lsearch -exact $argv "--verbose"]
+        if {$n > -1} {
+            incr OPTIONS(verbose)
+            set argv [lreplace $argv $n $n]
+            continue
+        }
+        set n [lsearch -exact $argv "--range"]
+        if {$n > -1} {
+            set OPTIONS(range) [ExpandRange [lindex $argv $n+1]]
+            set argv [lreplace $argv $n $n+1]
+            continue
+        }
+        set n [lsearch -exact $argv "--log"]
+        if {$n > -1} {
+            set OPTIONS(log) BASIC
+            set argv [lreplace $argv $n $n]
+            continue
+        }
+
+        break
+    }
+    if {$argv eq {}} { set argv [glob -nocomplain *.shp] }
+    if {$argv eq {}} { ERROR "Error: no shapefiles found" }
+    set bad [lsearch -glob -all -inline $argv "-*"]
+    if {$bad ne ""} {
+        ERROR "Error: unknown arguments: $bad"
+    }
+    set OPTIONS(fnames) $argv
+    set OPTIONS(width) [::tcl::mathfunc::max {*}[lmap v $argv { string length [file tail $v] }]]
+}
+proc DoOneFile {fname} {
+    global OPTIONS summary
+
+    set summary(count) 0
+    set summary(data) {}
+    set n [catch {set shape [::Shapefile::Go $fname]} emsg]
+    if {$n} {
+        putsMax "[file tail $fname] ERROR: cannot open, skipping: $emsg"
+        return
+    }
+    set header [$shape Header]
+    if {[dict get $header status] != "OK"} {
+        putsMax "[file tail $fname] [dict get $header status], skipping"
+        $shape Done
+        return
+    }
+
+    $shape SetLogger $OPTIONS(log)
+
+    set shapeType [dict get $header shapeType]
+    set prefix [format "%-*s shapeType: %2d %-11s" $OPTIONS(width) [file tail $fname] \
+                    $shapeType $::shapeTypes($shapeType)]
+    set recordCount [$shape RecordCount]
+
+    if {$OPTIONS(verbose) == 0} {
+        append prefix [format "  Records: %6d" $recordCount]
+        putsMax $prefix
+        $shape Done
+        return
+    }
+
+    if {$OPTIONS(verbose) > 1} {
+        putsMax "$fname\n[string repeat "=" [string length $fname]]"
+        set left "Heading:"
+        foreach name {version fileCode fileLength shapeType xmin xmax ymin ymax box} {
+            set value [dict get $header $name]
+            if {$name eq "box"} {
+                set value [lmap v $value { PrettyNumber $v }]
+            }
+            putsMax [format "%-8s %-10s %s" $left $name [PrettyNumber $value]]
+            set left ""
+        }
+    }
+    set indices [expr {$OPTIONS(range) ne "" ? $OPTIONS(range) : [ExpandRange 1-$recordCount]}]
+
+    foreach idx $indices {
+        if {$idx > $recordCount} break
+        lassign [$shape ReadOneRecord $idx] recordNumber type record
+        incr summary(count)
+        if {$summary(count) == $summary(max)} { lappend summary(data) \u2026 }
+
+        set showFunc "ShowType$type"
+        $showFunc $recordNumber $type $record
+    }
+    if {$OPTIONS(verbose) == 1} {
+        set line [format "%s  Records: %6d  Summary: %s" \
+                      $prefix $summary(count) $summary(data)]
+        putsMax $line
+    } elseif {$OPTIONS(verbose) == 2} {
+        set line [format "Records: %d\nSummary: %s" \
+                      $summary(count) $summary(data)]
+        putsMax $line
+    }
+    $shape Done
+}
+proc putsMax {msg {length 100}} {
+    # "Safe" puts which truncates output to 100 characters -- tkcon can freeze otherwise
+    if {[string length $msg] > $length} {
+        puts "[string range $msg 0 $length-1]\u2026"
+    } else {
+        puts $msg
+    }
+}
+################################################################
+################################################################
+
+
+ParseArgs $argv
+if {$tcl_interactive} { set fname [lindex $OPTIONS(fnames)] ; return}
+
+foreach fname $OPTIONS(fnames) {
+    DoOneFile $fname
+}
+return
+
+set shape [::Shapefile::Go $fname]
+set recordCount [$shape RecordCount]
+
+
+verbose=0:  no per record info
+verbose=1:  # records and size of each
+verbose=2:  plus record metadata
+verbose=3:  plus one line per part
+verbose=4:  plus bbox and additional line per part

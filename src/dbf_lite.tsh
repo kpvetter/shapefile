@@ -1,0 +1,304 @@
+#!/bin/sh
+# Restart with tcl: -*- mode: tcl; tab-width: 8; -*- \
+exec tclsh $0 ${1+"$@"}
+
+##+##########################################################################
+#
+# dbf_lite.tsh -- Quick explorer for *.dbf files:
+# * lists all text column names and values from row given by "--row ##"
+# * if --column gives an index or name, show --count entries from that column
+#
+# by Keith Vetter 2025-03-09
+# https://independent-software.com/dbase-dbf-dbt-file-format.html
+# https://www.dbase.com/Knowledgebase/INT/db7_file_fmt.htm
+# sample files: https://github.com/infused/dbf/tree/main/spec/fixtures
+#
+
+namespace eval ::DBF {
+    variable info
+    array set info {}
+    set info(initialized) False
+    set info(dbaseIII,types) {"C" "D" "F" "L" "N"}
+}
+proc ::DBF::Go {fname} {
+    # Open DB file and extract header and column info
+    variable info
+    set info(fname) $fname
+
+    set fin [open $fname rb]
+    try {
+        set bytes [read $fin 32] ; list
+        binary scan $bytes "cccciss" version year month day info(nRows) info(offset) info(reclen)
+        set version [expr {$version & 0xFF}]
+        if {$version == 0x02} {
+            error "cannot handle dbf files version 2 (FoxBase 1.0)"
+        }
+        if {$version == 0x8C} {
+            error "cannot handle dbf files version 0x8C (dBase 7)"
+        }
+
+        set info(initialized) True
+        set info(datestamp) [clock scan "$month/$day/[expr 1900 + $year]" -format %m/%d/%Y]
+        set info(nCols) [expr {($info(offset)-1)/32-1}] ;# Upper limit, 0x0d marks actual end
+
+        set recOffset 1
+        for {set i 1} {$i <= $info(nCols)} {incr i} {
+            set eohByte [read $fin 1] ; list
+            if {$eohByte eq "\x0d"} {
+                set info(nCols) [expr {$i - 1}]
+                break
+            }
+            seek $fin -1 current
+            set bytes [read $fin 32] ; list
+            binary scan $bytes "A11Ax4cc" info(name,$i) info(type,$i) info(len,$i) info(dec,$i)
+            set info(name,$i) [encoding convertfrom utf-8 $info(name,$i)]
+
+            set info(len,$i) [expr $info(len,$i) & 0xff] ;# convert to unsigned int
+            set info(ofs,$i) $recOffset
+            # set info(end,$i) [expr {$recOffset + $info(len,$i) - 1}]
+            incr recOffset $info(len,$i)
+        }
+    } finally {
+        close $fin
+    }
+
+    return $info(nRows)
+}
+# proc ::DBF::TextColumns {} {
+#     # Returns all text columns of length 5 or more
+#     variable info
+#     if {! $info(initialized)} {error "DBF not yet initialized"}
+#     set colData {}
+#     for {set i 1} {$i <= $info(nCols)} {incr i} {
+#         if {$info(type,$i) eq "C" && $info(len,$i) >= 5} {
+#             lappend colData [list $i $info(name,$i) $info(len,$i) $info(type,$i)]
+#         }
+#     }
+#     return $colData
+# }
+proc ::DBF::Columns {} {
+    # Returns all columns: list of {idx name len type}
+    variable info
+    if {! $info(initialized)} {error "DBF not yet initialized"}
+    set colData {}
+    for {set i 1} {$i <= $info(nCols)} {incr i} {
+        lappend colData [list $i $info(name,$i) $info(len,$i) $info(type,$i)]
+    }
+    return $colData
+}
+proc ::DBF::ReadRow {rowNumber} {
+    # Returns values for all columns for given row, with <None> for unreadable types
+    variable info
+    if {! $info(initialized)} {error "DBF not yet initialized"}
+
+    set rowNumber [expr {max(1, min($rowNumber, $info(nRows)))}]
+    set fin [open $info(fname) rb]
+    try {
+        set result {}
+        set base_offset [expr {$info(offset) + ($rowNumber - 1) * $info(reclen)}]
+        for {set col 1} {$col <= $info(nCols)} {incr col} {
+            if {$info(type,$col) ni $info(dbaseIII,types)} {
+                set value "<None>"
+            } else {
+                set offset [expr {$base_offset + $info(ofs,$col)}]
+                seek $fin $offset
+                set value [string trim [read $fin $info(len,$col)]]
+                set value [encoding convertfrom utf-8 $value]
+            }
+            lappend result $value
+        }
+    } finally {
+        close $fin
+    }
+    return $result
+}
+proc ::DBF::ReadRecordColumns {columnNumbers firstRecord lastRecord} {
+    # For each row between first and last record, return a datum of
+    # row# followed by a list of the value of each specified column
+    # number, e.g. ::DBF::ReadRecordColumns {3 7} 1 2 could yield ->
+    #  {{1 "Rhode Island" "Bristol"} {2 "Rhode Island" "Newport"}}
+
+    variable info
+    if {! $info(initialized)} {error "DBF not yet initialized"}
+
+    # dBase III Field Type: see https://www.dbase.com/Knowledgebase/INT/db7_file_fmt.htm
+    #   C Character -- stored as OEM code page characters
+    #   D Date 8 bytes YYYYMMDD
+    #   F Float - stored as string
+    #   N Numeric -- stored as string
+    #   L Logical
+
+    # Extended data types
+    #   B Binary -- stored as string
+    #   M Memo - 10 digits, stored as string
+    #   @ Timestamp - 2 longs (8 bytes) first date, second time
+    #   I Long - 4 bytes
+    #   + Autoincrement - same as long
+    #   O Double - 8 bytes
+    #   G OLE - stored as string
+    #   unknown: 0 I T V
+
+    # Only allowed dBase III type columns
+    set columnNumbers [lmap x $columnNumbers {
+        expr {$info(type,$x) in $info(dbaseIII,types) ? $x : [continue]}}]
+
+    if {$columnNumbers eq {}} { return {} }
+
+    set firstRecord [expr {max(1, $firstRecord)}]
+    if {$lastRecord == -1} { set lastRecord $info(nRows)}
+    set lastRecord [expr {min($info(nRows), $lastRecord)}]
+
+    set all {}
+    unset -nocomplain colData
+    set fin [open $info(fname) rb]
+
+    try {
+        set result {}
+        for {set row $firstRecord} {$row <= $lastRecord} {incr row} {
+            set rowOffset [expr {$info(offset) + ($row - 1) * $info(reclen)}]
+            set datum [list $row]
+            foreach col $columnNumbers {
+                set offset [expr {$rowOffset + $info(ofs,$col)}]
+                seek $fin $offset
+                set value [string trim [read $fin $info(len,$col)]]
+                set value [encoding convertfrom utf-8 $value]
+                lappend datum $value
+            }
+            lappend result $datum
+        }
+    } finally {
+        close $fin
+    }
+    return $result
+}
+################################################################
+################################################################
+
+if {[info exists argv0] && [file tail [info script]] eq [file tail $argv0]} {
+    "proc" ParseArgs {argv} {
+        global OPTIONS
+
+        if {[lsearch $argv "-h"] > -1 || [lsearch $argv "--help"] > -1} {
+            set msg "[file tail $::argv0] ?--columns #? ?--count ##? ?--row ##?"
+            append msg " <dbf file>..."
+            append msg "\nNB. --columns is a comma separated list of numbers or names"
+            puts $msg
+            exit
+        }
+        while True {
+            set n [lsearch -regex $argv "--columns?"]
+            if {$n > -1} {
+                set OPTIONS(columnIndices) [string tolower [lindex $argv $n+1]]
+                if {$OPTIONS(columnIndices) eq ""} { error "Error: no value given for --columns" }
+                set OPTIONS(columnIndices) [split $OPTIONS(columnIndices) ","]
+                set argv [lreplace $argv $n $n+1]
+                continue
+            }
+            set n [lsearch -exact $argv "--row"]
+            if {$n > -1} {
+                set OPTIONS(rowIndex) [lindex $argv $n+1]
+                if {! [string is integer -strict $OPTIONS(rowIndex)]} {
+                    puts "Error: bad value for option --row '$OPTIONS(columnIndices)'"
+                    exit -1
+                }
+                set argv [lreplace $argv $n $n+1]
+                continue
+            }
+            set n [lsearch -exact $argv "--count"]
+            if {$n > -1} {
+                set OPTIONS(count) [lindex $argv $n+1]
+                if {$OPTIONS(count) eq ""} { error "Error: no value given for --count" }
+                if {! [string is integer -strict $OPTIONS(count)]} {
+                    error "Error: bad number for --count '$OPTIONS(count)'"
+                }
+                set argv [lreplace $argv $n $n+1]
+                continue
+            }
+
+            break
+        }
+        set bad [lsearch -glob -all -inline $argv "-*"]
+        if {$bad ne ""} {
+            error "Error: unknown arguments: $bad"
+        }
+        if {$argv eq {}} {
+            set argv [glob -nocomplain *.dbf]
+        }
+        if {$argv eq {}} { puts stderr "Error: missing dbf file" ; exit 1}
+        return $argv
+    }
+
+    "proc" DoOneFile {fname columnIndicesOrNames rowIndex} {
+        set tail [file tail $fname]
+        puts "\n$tail\n[string repeat = [string length $tail]]"
+
+        # First part: get column data and the first row data
+
+        set n [catch {set nRows [::DBF::Go $fname]} emsg]
+        if {$n} { puts $emsg ; return }
+        set colData [::DBF::Columns]
+        set rowData [::DBF::ReadRow $rowIndex]
+
+        puts "Total rows: $nRows"
+        puts "Columns with values for row $rowIndex: "
+
+        unset -nocomplain COLDATA
+        set colIndices {}
+        set colNames {}
+
+        puts " idx name    type len   => value"
+        foreach datum $colData value $rowData {
+            lassign $datum idx name len type
+            set COLDATA($idx) [list $idx $name]
+            set COLDATA([string tolower $name]) [list $idx $name]
+            lappend colIndices $idx
+            lappend colNames $name
+
+            set prefix [format "  %2d %-10s %s (%d)" $idx $name $type $len]
+            set line [format "%-23s => '%s'" $prefix $value]
+            puts $line
+        }
+
+        # Get column index from numbers and names
+        if {$columnIndicesOrNames ne "*"} {
+            set colIndices {}
+            set colNames {}
+            foreach item $columnIndicesOrNames {
+                set item [string tolower $item]
+                if {[info exists COLDATA($item)]} {
+                    lassign $COLDATA($item) idx name
+                    lappend colIndices $idx
+                    lappend colNames $name
+                }
+            }
+        }
+        if {$colIndices eq ""} return
+        if {$::OPTIONS(count) <= 0} return
+        set pretty [join [lmap i $colIndices n $colNames { set _ "#$i $n" }] ", "]
+
+        # Second part: show values for specified columns for the specified rows
+        set lastIndex [expr {$rowIndex + $::OPTIONS(count)} - 1]
+        set values [::DBF::ReadRecordColumns $colIndices $rowIndex $lastIndex]
+
+        puts "\nValues for $pretty in rows $rowIndex to $lastIndex"
+        puts "row => data"
+        foreach rowData $values {
+            set names [lassign $rowData row]
+            puts [format " %2d => '%s'" $row [join $names "' '"]]
+        }
+    }
+
+    ################################################################
+    ################################################################
+
+    set OPTIONS(columnIndices) {}
+    set OPTIONS(rowIndex) 1
+    set OPTIONS(count) 10
+
+    set fnames [ParseArgs $argv]
+
+    if {$tcl_interactive} return
+    foreach fname $fnames {
+        DoOneFile $fname $OPTIONS(columnIndices) $OPTIONS(rowIndex)
+    }
+}
