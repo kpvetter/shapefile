@@ -1242,38 +1242,6 @@ proc AtExit {{returnCode 0}} {
     __real_exit $returnCode
 }
 
-proc Hemispheres {} {
-    global S
-
-    unset -nocomplain HEMIS
-
-    set hemispheres {Western_Hemisphere Eastern_Hemisphere Northern_Hemisphere Southern_Hemisphere}
-    foreach hemi $hemispheres { set HEMIS($hemi) {} }
-
-    set recordCount [$S(shape) RecordCount]
-    for {set idx 1} {$idx <= $recordCount} {incr idx} {
-        lassign [$S(shape) ReadOneRecord $idx] recordNumber type record
-        set bbox [dict get $record box]
-        lassign $bbox left bottom right top
-
-        set name [lindex $S(dbData) $idx-1 1]
-        if {$name eq ""} continue
-
-        if {$left <= 0} {lappend HEMIS(Western_Hemisphere) $name}
-        if {$right >= 0} {lappend HEMIS(Eastern_Hemisphere) $name}
-        if {$top >= 0} {lappend HEMIS(Northern_Hemisphere) $name}
-        if {$bottom <= 0} {lappend HEMIS(Southern_Hemisphere) $name}
-    }
-    set code ""
-    foreach hemi $hemispheres {
-        set values [join $HEMIS($hemi) "\" \""]
-        append code "    set BLOCS($hemi) {\n"
-        append code "        \"$values\"}\n"
-    }
-    return $code
-}
-
-
 ################################################################
 ################################################################
 
