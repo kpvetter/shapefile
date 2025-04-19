@@ -19,6 +19,8 @@ exec tclsh $0 ${1+"$@"}
 # some shape files want 2 column keys, e.g. cs_2021_us_county_20m wants county & state names
 # what does Draw All really do???
 # tooltips
+# WINDOWS -- are we deleting zip file too soon???
+# Splash -- don't duplicate github downloads with local ones
 #
 # DONE meridian lines
 # DONE progress bar or busy mouse
@@ -68,6 +70,10 @@ package require cksum
 package require fileutil
 package require tooltip
 package require vfs::zip
+package require http
+package require tls
+http::register https 443 [list ::tls::socket -tls1 1]
+package require uri
 
 source [file join [file dirname $argv0] src/shapefile.tcl]
 source [file join [file dirname $argv0] src/dbf_lite.tsh]
@@ -1136,6 +1142,17 @@ proc Splash {} {
         ::ttk::button $w -text $shp -command [list SplashGo $shp]
         grid $w -sticky ew
     }
+    grid config $w -pady {0 .2i}
+
+    foreach who [::Github::Known] {
+        incr id
+        set w .splash.buttons.$id
+        set txt "Github://$who"
+        set cmd [list ::Github::Open $who]
+        ::ttk::button $w -text $txt -command $cmd
+        grid $w -sticky ew
+    }
+
     grid .splash.buttons.close -pady {.25i 0}
 
     place .splash -in .c -relx .5 -rely .4 -anchor c
@@ -1152,16 +1169,16 @@ proc CleanUp {} {
     exit
 }
 namespace eval ::Zip {
-    # Code to open a zip file and extract the shape file
-    # using Tcl's VSF file system.
+    # Code to open a zip file using Tcl's VSF file system and extracting the
+    # the shape and dbaseIII files into a temporary directory
 
 }
-proc ::Zip::Open {zipFile} {
-    # Opens up the zipFile and extracts the first XXX.shp file (also XXX.shx and XXX.dbf)
+proc ::Zip::Open {zipName} {
+    # Opens up the zipName and extracts the first XXX.shp file (also XXX.shx and XXX.dbf)
     # into a temp directory.
     global S
 
-    ::Zip::Cleanup
+    ::Zip::Cleanup $zipName
     if {$S(tempdir) eq ""} {
         set S(tempdir) [::fileutil::maketempdir -prefix view_shapefile_kpv_]
     }
@@ -1169,7 +1186,7 @@ proc ::Zip::Open {zipFile} {
     set shapeFile ""
     try {
         set mountPoint /__zip
-        set zipVFS [::vfs::zip::Mount [file normalize $zipFile] $mountPoint]
+        set zipVFS [::vfs::zip::Mount [file normalize $zipName] $mountPoint]
         set shpData [::Zip::FindAllShapeFiles $mountPoint]
         if {[llength $shpData] == 0} { return "" }
 
@@ -1209,11 +1226,13 @@ proc ::Zip::FindAllShapeFiles {cwd} {
     }
     return $shpData
 }
-proc ::Zip::Cleanup {} {
+proc ::Zip::Cleanup {except} {
     global S
     if {$S(tempdir) ne ""} {
         foreach fname [glob -nocomplain [file join $S(tempdir) "*"]] {
-            catch {file delete -force -- $fname}
+            if {$fname ne $except} {
+                catch {file delete -force -- $fname}
+            }
         }
     }
 }
@@ -1232,6 +1251,85 @@ proc AtExit {{returnCode 0}} {
     }
     __real_exit $returnCode
 }
+
+namespace eval ::Github {
+    variable URL
+    set baseUrl https://raw.githubusercontent.com/kpvetter/shapefile/refs/heads/main
+    set URL(worldShapes.zip) $baseUrl/sampleData/worldShapes.zip
+    set URL(cb_2021_us_state_20m.zip) $baseUrl/sampleData/cb_2021_us_state_20m.zip
+
+    proc Known {} {
+        variable URL
+        return [lsort -dictionary [array names URL]]
+    }
+}
+
+proc ::Github::Open {who} {
+    variable URL
+
+    destroy .splash
+    if {! [info exists URL($who)]} {
+        error "$who not in URL list"
+    }
+    set zdata [::Github::_DownloadZip $URL($who)] ; list
+    set zipName [::Github::_SaveZip $who $zdata]
+    InstallZipFile $zipName
+}
+
+proc ::Github::_DownloadZip {github_url} {
+    # Downloads a given URL
+
+    set token [::Github::_geturl_followRedirects $github_url]
+
+    set code [::http::ncode $token]
+    set data [::http::data $token] ; list
+    ::http::cleanup $token
+
+    if {$code != 200} {
+        puts stderr "ERROR: wrong http code ($code) downloading $github_url"
+        exit 1
+    }
+    return $data
+}
+
+proc ::Github::_SaveZip {who zdata} {
+    global S
+
+    if {$S(tempdir) eq ""} {
+        set S(tempdir) [::fileutil::maketempdir -prefix view_shapefile_kpv_]
+    }
+    set zipName [file join $S(tempdir) $who]
+
+    set fout [open $zipName wb]
+    puts -nonewline $fout $zdata
+    close $fout
+
+    return $zipName
+}
+
+proc ::Github::_geturl_followRedirects {url args} {
+    # Calls http::geturl while following redirects
+
+    array set URI [::uri::split $url] ;# Need host info from here
+    set maxTries 10
+    while {[incr maxTries -1] >= 0} {
+        set token [http::geturl $url {*}$args]
+        if {![string match {30[1237]} [::http::ncode $token]]} {return $token}
+        array set meta [set ${token}(meta)]
+        if {![info exist meta(Location)]} {
+            return $token
+        }
+        http::reset $token
+
+        array set uri [::uri::split $meta(Location)]
+        unset meta
+        if {$uri(host) == ""} { set uri(host) $URI(host) }
+        # problem w/ relative versus absolute paths
+        set url [eval ::uri::join [array get uri]]
+    }
+}
+
+
 
 ################################################################
 ################################################################
