@@ -16,7 +16,6 @@ exec tclsh $0 ${1+"$@"}
 # url links to good shape files outside of Github????
 # some shape files want 2 column keys, e.g. cs_2021_us_county_20m wants county & state names
 # tooltips
-# country neighbors: https://www.wikiwand.com/en/articles/List_of_countries_and_territories_by_number_of_land_borders
 #
 # DONE meridian lines
 # DONE progress bar or busy mouse
@@ -62,10 +61,9 @@ exec tclsh $0 ${1+"$@"}
 # DONE Renamed Beta Regions
 # DONE keyboard navigation in shape list
 # NO Splash -- don't duplicate github downloads with local ones
-
+# DONE coloring scheme insuring neighbors have different colors
 
 package require Tk
-package require cksum
 package require fileutil
 package require tooltip
 package require vfs::zip
@@ -77,6 +75,7 @@ package require uri
 source [file join [file dirname $argv0] src/shapefile.tcl]
 source [file join [file dirname $argv0] src/dbf_lite.tsh]
 source [file join [file dirname $argv0] src/checkedlistbox.tcl]
+source [file join [file dirname $argv0] src/coloring.tcl]
 
 set S(width) 1024
 set S(height) 655
@@ -523,17 +522,10 @@ proc TooltipClear {args} {
     }
 
 }
-proc DoOneShape {shape idx bbox} {
+proc DoOneShape {shape idx bbox color} {
     global S
 
     set name [lindex $S(dbData) $idx-1 1]
-
-    set color [::Coloring::WhatColor $name]
-    if {$color eq ""} {
-        set datum "$bbox $idx $S(bbox,cnt)"
-        set clrIndex [expr {[::crc::cksum $datum] % [llength $S(colors)]}]
-        set color [lindex $S(colors) $clrIndex]
-    }
 
     lassign [$shape ReadOneRecord $idx] recordNumber type record
     set type [dict get [$shape Header] shapeType]
@@ -727,12 +719,13 @@ proc DoSelectedShapes {how} {
     .c config -cursor watch
     update
 
-    ::Coloring::Colorize $nameList
+    set colorScheme [::Coloring::CreateColoringScheme $nameList $S(bbox,cnt)]
     set cnt 0
-    foreach idx $indexList {
+    foreach idx $indexList name $nameList {
         incr cnt
+        set color [dict get $colorScheme $name]
         Progress "Drawing #$cnt of $total"
-        DoOneShape $S(shape) $idx $S(bbox,last)
+        DoOneShape $S(shape) $idx $S(bbox,last) $color
         if {$cnt % 10 == 0} update
     }
     update
@@ -1358,103 +1351,8 @@ proc LoadIcons {} {
     ::img::logo_icon_flip copy ::img::logo -subsample -4 4
 }
 
-namespace eval ::Coloring {
-    variable USA_NEIGHBORS
-    variable COLORS [list lightyellow cyan orange green pink sienna1 yellow red blue springgreen]
-    variable coloringScheme
-    array set USA_NEIGHBORS {
-        "Alabama" {"Mississippi" "Tennessee" "Florida" "Georgia"}
-        "Alaska" {}
-        "Arizona" {"Nevada" "New Mexico" "Utah" "California" "Colorado"}
-        "Arkansas" {"Oklahoma" "Tennessee" "Texas" "Louisiana" "Mississippi" "Missouri"}
-        "California" {"Oregon" "Arizona" "Nevada"}
-        "Colorado" {"New Mexico" "Oklahoma" "Utah" "Wyoming" "Arizona" "Kansas" "Nebraska"}
-        "Connecticut" {"New York" "Rhode Island" "Massachusetts"}
-        "Delaware" {"New Jersey" "Pennsylvania" "Maryland"}
-        "District of Columbia" {"Maryland" "Virginia"}
-        "Florida" {"Georgia" "Alabama"}
-        "Georgia" {"North Carolina" "South Carolina" "Tennessee" "Alabama" "Florida"}
-        "Hawaii" {}
-        "Idaho" {"Utah" "Washington" "Wyoming" "Montana" "Nevada" "Oregon"}
-        "Illinois" {"Kentucky" "Missouri" "Wisconsin" "Indiana" "Iowa"}
-        "Indiana" {"Michigan" "Ohio" "Illinois" "Kentucky"}
-        "Iowa" {"Nebraska" "South Dakota" "Wisconsin" "Illinois" "Minnesota" "Missouri"}
-        "Kansas" {"Nebraska" "Oklahoma" "Colorado" "Missouri"}
-        "Kentucky" {"Tennessee" "Virginia" "West Virginia" "Illinois" "Indiana" "Missouri" "Ohio"}
-        "Louisiana" {"Texas" "Arkansas" "Mississippi"}
-        "Maine" {"New Hampshire"}
-        "Maryland" {"Virginia" "West Virginia" "Delaware" "Pennsylvania"}
-        "Massachusetts" {"New York" "Rhode Island" "Vermont" "Connecticut" "New Hampshire"}
-        "Michigan" {"Ohio" "Wisconsin" "Illinois" "Indiana"}
-        "Minnesota" {"North Dakota" "South Dakota" "Wisconsin" "Iowa"}
-        "Mississippi" {"Louisiana" "Tennessee" "Alabama" "Arkansas"}
-        "Missouri" {"Nebraska" "Oklahoma" "Tennessee" "Arkansas" "Illinois" "Iowa" "Kansas" "Kentucky"}
-        "Montana" {"South Dakota" "Wyoming" "Idaho" "North Dakota"}
-        "Nebraska" {"Missouri" "South Dakota" "Wyoming" "Colorado" "Iowa" "Kansas"}
-        "Nevada" {"Idaho" "Oregon" "Utah" "Arizona" "California"}
-        "New Hampshire" {"Vermont" "Maine" "Massachusetts"}
-        "New Jersey" {"Pennsylvania" "Delaware" "New York"}
-        "New Mexico" {"Oklahoma" "Texas" "Utah" "Arizona" "Colorado"}
-        "New York" {"Pennsylvania" "Vermont" "Connecticut" "Massachusetts" "New Jersey"}
-        "North Carolina" {"Tennessee" "Virginia" "Georgia" "South Carolina"}
-        "North Dakota" {"South Dakota" "Minnesota" "Montana"}
-        "Ohio" {"Michigan" "Pennsylvania" "West Virginia" "Indiana" "Kentucky"}
-        "Oklahoma" {"Missouri" "New Mexico" "Texas" "Arkansas" "Colorado" "Kansas"}
-        "Oregon" {"Nevada" "Washington" "California" "Idaho"}
-        "Pennsylvania" {"New York" "Ohio" "West Virginia" "Delaware" "Maryland" "New Jersey"}
-        "Rhode Island" {"Massachusetts" "Connecticut"}
-        "South Carolina" {"North Carolina" "Georgia"}
-        "South Dakota" {"Nebraska" "North Dakota" "Wyoming" "Iowa" "Minnesota" "Montana"}
-        "Tennessee" {"Mississippi" "Missouri" "North Carolina" "Virginia" "Alabama" "Arkansas" "Georgia" "Kentucky"}
-        "Texas" {"New Mexico" "Oklahoma" "Arkansas" "Louisiana"}
-        "Utah" {"Nevada" "New Mexico" "Wyoming" "Arizona" "Colorado" "Idaho"}
-        "Vermont" {"New Hampshire" "New York" "Massachusetts"}
-        "Virginia" {"North Carolina" "Tennessee" "West Virginia" "Kentucky" "Maryland"}
-        "Washington" {"Oregon" "Idaho"}
-        "West Virginia" {"Pennsylvania" "Virginia" "Kentucky" "Maryland" "Ohio"}
-        "Wisconsin" {"Michigan" "Minnesota" "Illinois" "Iowa"}
-        "Wyoming" {"Nebraska" "South Dakota" "Utah" "Colorado" "Idaho" "Montana"}
-    }
-}
-proc ::Coloring::WhatColor {name} {
-    variable coloringScheme
-
-    if {[dict exists $coloringScheme $name]} {
-        return [dict get $coloringScheme $name]
-    }
-    return ""
-}
-proc ::Coloring::Colorize {nameList} {
-    variable USA_NEIGHBORS
-    variable COLORS
-    variable coloringScheme
-
-    set coloringScheme [dict create]
-    foreach name $nameList {
-        if {! [info exists USA_NEIGHBORS($name)]} continue
-
-        set exclude [lmap n $USA_NEIGHBORS($name) { ::Coloring::DictGet $coloringScheme $n }]
-        set color [::Coloring::PickAColor $COLORS $exclude]
-        if {$color eq ""} continue
-        dict set coloringScheme $name $color
-    }
-    return $coloringScheme
-}
-proc ::Coloring::DictGet {dictionary key {default ""}} {
-    if {[dict exists $dictionary $key]} {
-        return [dict get $dictionary $key]
-    }
-    return $default
-}
-proc ::Coloring::PickAColor {colors exclude} {
-    set available [lmap c $colors { if {$c in $exclude} continue; set c }]
-    set index [expr {int(rand() * [llength $available])}]
-    return [lindex $available $index]
-}
-
 ################################################################
 ################################################################
-
 
 if {[info commands __real_exit] eq ""} {
     rename exit __real_exit
