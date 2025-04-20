@@ -13,11 +13,10 @@ exec tclsh $0 ${1+"$@"}
 # move wrapping longitude
 # help/about page???
 # option to mask overflow shapes???
-# keyboard access to Shape list???
 # url links to good shape files outside of Github????
 # some shape files want 2 column keys, e.g. cs_2021_us_county_20m wants county & state names
 # tooltips
-# Splash -- don't duplicate github downloads with local ones
+# country neighbors: https://www.wikiwand.com/en/articles/List_of_countries_and_territories_by_number_of_land_borders
 #
 # DONE meridian lines
 # DONE progress bar or busy mouse
@@ -61,6 +60,9 @@ exec tclsh $0 ${1+"$@"}
 # DONE Added 4 hemispheres
 # DONE Removed beta filtering
 # DONE Renamed Beta Regions
+# DONE keyboard navigation in shape list
+# NO Splash -- don't duplicate github downloads with local ones
+
 
 package require Tk
 package require cksum
@@ -109,11 +111,11 @@ if {$::tcl_platform(user) eq "kvetter"} { set S(beta) True }
 proc DoDisplay {} {
     global S
 
+    LoadIcons
+
     wm title . "Shapefile Viewer"
     wm iconphoto . ::img::logo
     wm iconname . "View Shape"
-
-    LoadIcons
 
     ::ttk::frame .top
     label .top.title -textvariable S(fname,pretty) -anchor c -font $S(title_font) -bg $S(canvas,bg)
@@ -140,6 +142,7 @@ proc DoDisplay {} {
     grid columnconfigure . 0 -weight 1
     grid columnconfigure .bottom 0 -weight 1
 
+    focus $S(tree)
     wm withdraw . ; update ; wm deiconify .
     after idle DrawBBox
 }
@@ -291,6 +294,8 @@ proc InstallNewFile {fname} {
     ::CheckedListBox::Clear $S(tree)
     ::CheckedListBox::AddManyItems $S(tree) $checkboxData
     ::Regions::InstallBlocs
+    update
+    bind $S(tree) <KeyPress> {::CheckedListBox::_KeyPress %W %A}
 }
 proc ExtractAllDBaseInfo {fname} {
     # Returns list of {row# value} from *.dbf for selected column
@@ -521,9 +526,14 @@ proc TooltipClear {args} {
 proc DoOneShape {shape idx bbox} {
     global S
 
-    set datum "$bbox $idx $S(bbox,cnt)"
-    set clrIndex [expr {[::crc::cksum $datum] % [llength $S(colors)]}]
-    set color [lindex $S(colors) $clrIndex]
+    set name [lindex $S(dbData) $idx-1 1]
+
+    set color [::Coloring::WhatColor $name]
+    if {$color eq ""} {
+        set datum "$bbox $idx $S(bbox,cnt)"
+        set clrIndex [expr {[::crc::cksum $datum] % [llength $S(colors)]}]
+        set color [lindex $S(colors) $clrIndex]
+    }
 
     lassign [$shape ReadOneRecord $idx] recordNumber type record
     set type [dict get [$shape Header] shapeType]
@@ -694,6 +704,7 @@ proc DoSelectedShapes {how} {
     }
 
     set indexList [CheckedToIndexList]
+    set nameList [CheckedToNameList]
 
     if {$how eq "only_new"} {
         set indexList [lmap v $indexList { if {$v in $S(indexList,last)} continue ; set v }]
@@ -715,6 +726,8 @@ proc DoSelectedShapes {how} {
     . config -cursor watch
     .c config -cursor watch
     update
+
+    ::Coloring::Colorize $nameList
     set cnt 0
     foreach idx $indexList {
         incr cnt
@@ -788,25 +801,27 @@ namespace eval ::Regions {
         "District of Columbia"}
 
     # https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf
-    set BLOCS(bb,New_England,US_Census_Division:_New_England) {
-        "Connecticut" "Maine" "Massachusetts" "New Hampshire" "Rhode Island" "Vermont"}
-    set BLOCS(bb,Middle_Atlantic,US_Census_Division:_Middle_Atlantic) {
-        "New Jersey" "New York" "Pennsylvania"}
-    set BLOCS(bb,East_North_Central,US_Census_Division:_East_North_Central) {
-        "Indiana" "Illinois" "Michigan" "Ohio" "Wisconsin"}
-    set BLOCS(bb,West_North_Central,US_Census_Division:_West_North_Central) {
-        "Iowa" "Kansas" "Minnesota" "Missouri" "Nebraska" "North Dakota" "South Dakota"}
-    set BLOCS(bb,South_Atlantic,US_Census_Division:_South_Atlantic) {
-        "Delaware" "District of Columbia" "Florida" "Georgia" "Maryland" "North Carolina"
-        "South Carolina" "Virginia" "West Virginia"}
-    set BLOCS(bb,East_South_Central,US_Census_Division:_East_South_Central) {
-        "Alabama" "Kentucky" "Mississippi" "Tennessee"}
-    set BLOCS(bb,West_South_Central,US_Census_Division:_West_South_Central) {
-        "Arkansas" "Louisiana" "Oklahoma" "Texas"}
-    set BLOCS(bb,Mountain,US_Census_Division:_Mountain) {
-        "Arizona" "Colorado" "Idaho" "New Mexico" "Montana" "Utah" "Nevada" "Wyoming"}
-    set BLOCS(bb,Pacific,US_Census_Division:_Pacific) {
-        "Alaska" "California" "Hawaii" "Oregon" "Washington"}
+    # https://en.wikipedia.org/wiki/List_of_regions_of_the_United_States
+    # set BLOCS(bb,New_England,US_Census_Division:_New_England) {
+    #     "Connecticut" "Maine" "Massachusetts" "New Hampshire" "Rhode Island" "Vermont"}
+    # set BLOCS(bb,Middle_Atlantic,US_Census_Division:_Middle_Atlantic) {
+    #     "New Jersey" "New York" "Pennsylvania"}
+    # set BLOCS(bb,East_North_Central,US_Census_Division:_East_North_Central) {
+    #     "Indiana" "Illinois" "Michigan" "Ohio" "Wisconsin"}
+    # set BLOCS(bb,West_North_Central,US_Census_Division:_West_North_Central) {
+    #     "Iowa" "Kansas" "Minnesota" "Missouri" "Nebraska" "North Dakota" "South Dakota"}
+    # set BLOCS(bb,South_Atlantic,US_Census_Division:_South_Atlantic) {
+    #     "Delaware" "District of Columbia" "Florida" "Georgia" "Maryland" "North Carolina"
+    #     "South Carolina" "Virginia" "West Virginia"}
+    # set BLOCS(bb,East_South_Central,US_Census_Division:_East_South_Central) {
+    #     "Alabama" "Kentucky" "Mississippi" "Tennessee"}
+    # set BLOCS(bb,West_South_Central,US_Census_Division:_West_South_Central) {
+    #     "Arkansas" "Louisiana" "Oklahoma" "Texas"}
+    # set BLOCS(bb,Mountain,US_Census_Division:_Mountain) {
+    #     "Arizona" "Colorado" "Idaho" "New Mexico" "Montana" "Utah" "Nevada" "Wyoming"}
+    # set BLOCS(bb,Pacific,US_Census_Division:_Pacific) {
+    #     "Alaska" "California" "Hawaii" "Oregon" "Washington"}
+
     set BLOCS(cc,Continental_US,US_without_Alaska_and_Hawaii) {
         "Alabama" "Arizona" "Arkansas" "California" "Colorado"
         "Connecticut" "Delaware" "District of Columbia" "Florida"
@@ -1143,11 +1158,12 @@ proc Splash {} {
     }
     grid config $w -pady {0 .2i}
 
-    foreach who [::Github::Known] {
+    foreach item [::Github::Known] {
+        lassign $item key txt
         incr id
         set w .splash.buttons.$id
-        set txt "Github://$who"
-        set cmd [list ::Github::Open $who]
+        set txt "Web -- $txt"
+        set cmd [list ::Github::Open $key]
         ::ttk::button $w -text $txt -command $cmd
         grid $w -sticky ew
     }
@@ -1253,14 +1269,15 @@ proc AtExit {{returnCode 0}} {
 
 namespace eval ::Github {
     variable URL
-    set baseUrl https://raw.githubusercontent.com/kpvetter/shapefile/refs/heads/main
-    set URL(worldShapes.zip) $baseUrl/sampleData/worldShapes.zip
-    set URL(cb_2021_us_state_20m.zip) $baseUrl/sampleData/cb_2021_us_state_20m.zip
+    set baseUrl https://raw.githubusercontent.com/kpvetter/shapefile/refs/heads/main/sampleData
+    set URL(worldShapes.zip) [list "Countries of the world" $baseUrl/worldShapes.zip]
+    set URL(cb_2021_us_state_20m.zip) [list "States in the USA" $baseUrl/cb_2021_us_state_20m.zip]
+}
 
-    proc Known {} {
-        variable URL
-        return [lsort -dictionary [array names URL]]
-    }
+proc ::Github::Known {} {
+    variable URL
+    set all [lmap {key value} [array get URL] { list $key [lindex $value 0] }]
+    return [lsort -dictionary -index 0 $all]
 }
 
 proc ::Github::Open {who} {
@@ -1271,7 +1288,8 @@ proc ::Github::Open {who} {
         return
     }
     destroy .splash
-    set zdata [::Github::_DownloadZip $URL($who)] ; list
+    set url [lindex $URL($who) 1]
+    set zdata [::Github::_DownloadZip $url] ; list
     set zipName [::Github::_SaveZip $who $zdata]
     InstallZipFile $zipName
 }
@@ -1340,6 +1358,99 @@ proc LoadIcons {} {
     ::img::logo_icon_flip copy ::img::logo -subsample -4 4
 }
 
+namespace eval ::Coloring {
+    variable USA_NEIGHBORS
+    variable COLORS [list lightyellow cyan orange green pink sienna1 yellow red blue springgreen]
+    variable coloringScheme
+    array set USA_NEIGHBORS {
+        "Alabama" {"Mississippi" "Tennessee" "Florida" "Georgia"}
+        "Alaska" {}
+        "Arizona" {"Nevada" "New Mexico" "Utah" "California" "Colorado"}
+        "Arkansas" {"Oklahoma" "Tennessee" "Texas" "Louisiana" "Mississippi" "Missouri"}
+        "California" {"Oregon" "Arizona" "Nevada"}
+        "Colorado" {"New Mexico" "Oklahoma" "Utah" "Wyoming" "Arizona" "Kansas" "Nebraska"}
+        "Connecticut" {"New York" "Rhode Island" "Massachusetts"}
+        "Delaware" {"New Jersey" "Pennsylvania" "Maryland"}
+        "District of Columbia" {"Maryland" "Virginia"}
+        "Florida" {"Georgia" "Alabama"}
+        "Georgia" {"North Carolina" "South Carolina" "Tennessee" "Alabama" "Florida"}
+        "Hawaii" {}
+        "Idaho" {"Utah" "Washington" "Wyoming" "Montana" "Nevada" "Oregon"}
+        "Illinois" {"Kentucky" "Missouri" "Wisconsin" "Indiana" "Iowa"}
+        "Indiana" {"Michigan" "Ohio" "Illinois" "Kentucky"}
+        "Iowa" {"Nebraska" "South Dakota" "Wisconsin" "Illinois" "Minnesota" "Missouri"}
+        "Kansas" {"Nebraska" "Oklahoma" "Colorado" "Missouri"}
+        "Kentucky" {"Tennessee" "Virginia" "West Virginia" "Illinois" "Indiana" "Missouri" "Ohio"}
+        "Louisiana" {"Texas" "Arkansas" "Mississippi"}
+        "Maine" {"New Hampshire"}
+        "Maryland" {"Virginia" "West Virginia" "Delaware" "Pennsylvania"}
+        "Massachusetts" {"New York" "Rhode Island" "Vermont" "Connecticut" "New Hampshire"}
+        "Michigan" {"Ohio" "Wisconsin" "Illinois" "Indiana"}
+        "Minnesota" {"North Dakota" "South Dakota" "Wisconsin" "Iowa"}
+        "Mississippi" {"Louisiana" "Tennessee" "Alabama" "Arkansas"}
+        "Missouri" {"Nebraska" "Oklahoma" "Tennessee" "Arkansas" "Illinois" "Iowa" "Kansas" "Kentucky"}
+        "Montana" {"South Dakota" "Wyoming" "Idaho" "North Dakota"}
+        "Nebraska" {"Missouri" "South Dakota" "Wyoming" "Colorado" "Iowa" "Kansas"}
+        "Nevada" {"Idaho" "Oregon" "Utah" "Arizona" "California"}
+        "New Hampshire" {"Vermont" "Maine" "Massachusetts"}
+        "New Jersey" {"Pennsylvania" "Delaware" "New York"}
+        "New Mexico" {"Oklahoma" "Texas" "Utah" "Arizona" "Colorado"}
+        "New York" {"Pennsylvania" "Vermont" "Connecticut" "Massachusetts" "New Jersey"}
+        "North Carolina" {"Tennessee" "Virginia" "Georgia" "South Carolina"}
+        "North Dakota" {"South Dakota" "Minnesota" "Montana"}
+        "Ohio" {"Michigan" "Pennsylvania" "West Virginia" "Indiana" "Kentucky"}
+        "Oklahoma" {"Missouri" "New Mexico" "Texas" "Arkansas" "Colorado" "Kansas"}
+        "Oregon" {"Nevada" "Washington" "California" "Idaho"}
+        "Pennsylvania" {"New York" "Ohio" "West Virginia" "Delaware" "Maryland" "New Jersey"}
+        "Rhode Island" {"Massachusetts" "Connecticut"}
+        "South Carolina" {"North Carolina" "Georgia"}
+        "South Dakota" {"Nebraska" "North Dakota" "Wyoming" "Iowa" "Minnesota" "Montana"}
+        "Tennessee" {"Mississippi" "Missouri" "North Carolina" "Virginia" "Alabama" "Arkansas" "Georgia" "Kentucky"}
+        "Texas" {"New Mexico" "Oklahoma" "Arkansas" "Louisiana"}
+        "Utah" {"Nevada" "New Mexico" "Wyoming" "Arizona" "Colorado" "Idaho"}
+        "Vermont" {"New Hampshire" "New York" "Massachusetts"}
+        "Virginia" {"North Carolina" "Tennessee" "West Virginia" "Kentucky" "Maryland"}
+        "Washington" {"Oregon" "Idaho"}
+        "West Virginia" {"Pennsylvania" "Virginia" "Kentucky" "Maryland" "Ohio"}
+        "Wisconsin" {"Michigan" "Minnesota" "Illinois" "Iowa"}
+        "Wyoming" {"Nebraska" "South Dakota" "Utah" "Colorado" "Idaho" "Montana"}
+    }
+}
+proc ::Coloring::WhatColor {name} {
+    variable coloringScheme
+
+    if {[dict exists $coloringScheme $name]} {
+        return [dict get $coloringScheme $name]
+    }
+    return ""
+}
+proc ::Coloring::Colorize {nameList} {
+    variable USA_NEIGHBORS
+    variable COLORS
+    variable coloringScheme
+
+    set coloringScheme [dict create]
+    foreach name $nameList {
+        if {! [info exists USA_NEIGHBORS($name)]} continue
+
+        set exclude [lmap n $USA_NEIGHBORS($name) { ::Coloring::DictGet $coloringScheme $n }]
+        set color [::Coloring::PickAColor $COLORS $exclude]
+        if {$color eq ""} continue
+        dict set coloringScheme $name $color
+    }
+    return $coloringScheme
+}
+proc ::Coloring::DictGet {dictionary key {default ""}} {
+    if {[dict exists $dictionary $key]} {
+        return [dict get $dictionary $key]
+    }
+    return $default
+}
+proc ::Coloring::PickAColor {colors exclude} {
+    set available [lmap c $colors { if {$c in $exclude} continue; set c }]
+    set index [expr {int(rand() * [llength $available])}]
+    return [lindex $available $index]
+}
 
 ################################################################
 ################################################################
