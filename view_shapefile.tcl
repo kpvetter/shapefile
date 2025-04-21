@@ -16,6 +16,8 @@ exec tclsh $0 ${1+"$@"}
 # url links to good shape files outside of Github????
 # some shape files want 2 column keys, e.g. cs_2021_us_county_20m wants county & state names
 # tooltips
+# colorScheme fails with "Draw New"
+# ???add neighbors to tooltip???
 #
 # DONE meridian lines
 # DONE progress bar or busy mouse
@@ -99,6 +101,7 @@ set S(frame,bbox) ""
 set S(meridians,onoff) 1
 set S(meridians,bbox) ""
 set S(iconfile) myicon.png
+set S(icon,usa) usa_icon.png
 set S(canvas,bg) gray90
 set S(tempdir) ""
 set S(dbData) {}
@@ -165,6 +168,8 @@ proc ControlWindow {w} {
 
     # File buttons
     ::ttk::button $w.top.file -text "Open Shape File" -command GetNewFile
+    bind $w.top.file <2> Splash
+    bind $w.top.file <3> Splash
     ::ttk::label $w.top.fname -textvariable S(fname,pretty2) -width 30 -anchor c
     pack $w.top.file -side left
     pack $w.top.fname -side left -fill x
@@ -627,6 +632,7 @@ proc KeepSelected {} {
 # checked items  -> indexList : CheckedToIndexList
 # nameList       -> indexList : NameListToIndexList
 # indexList      -> idList    : IndexListToIdList
+# indexList      -> nameList  : IndexListToNameList
 # canvas item    -> indexList : CanvasToIndexList
 
 proc CheckedToIndexList {} {
@@ -672,6 +678,19 @@ proc IndexListToIdList {indexList} {
     }
     return $idList
 }
+proc IndexListToNameList {indexList} {
+    global S
+    set nameList {}
+
+    foreach dbRow $S(dbData) {
+        lassign $dbRow index name
+        if {$index in $indexList} {
+            lappend nameList $name
+        }
+    }
+    set nameList [lsort -dictionary $nameList]
+    return $nameList
+}
 proc CanvasToIndexList {} {
     global S
 
@@ -696,16 +715,16 @@ proc DoSelectedShapes {how} {
     }
 
     set indexList [CheckedToIndexList]
-    set nameList [CheckedToNameList]
-
     if {$how eq "only_new"} {
         set indexList [lmap v $indexList { if {$v in $S(indexList,last)} continue ; set v }]
         lappend S(indexList,last) {*}$indexList
     } else {
         set S(indexList,last) $indexList
     }
-    set total [llength $indexList]
     if {$indexList eq {}} return
+
+    set nameList [IndexListToNameList $indexList]
+    set total [llength $indexList]
 
     set numShapes [llength [.c find withtag shape]]
     if {$how eq "clear" || $numShapes == 0} {
@@ -1134,16 +1153,41 @@ proc Splash {} {
     ::ttk::label .splash.text -text $text -justify c -font $S(big_bold_font)
     ::ttk::label .splash.credit -text "By Keith Vetter\nMarch 2025" -justify c -font $S(bold_font)
 
+    ::ttk::frame .splash.web
     ::ttk::frame .splash.buttons
-    ::ttk::button .splash.buttons.close -text "Open Shape File Dialog" -command GetNewFile
 
     grid .splash.logo .splash.title
     grid ^ .splash.text -sticky n
-    grid .splash.credit -columnspan 2 -pady {0 .25i}
+    grid .splash.credit -columnspan 2
+    grid .splash.web -columnspan 2 -pady .25i
     grid .splash.buttons -columnspan 2
 
+    set localFiles [lsort -dictionary [glob -nocomplain *.shp *.zip]]
+
+    # Buttons for web downloads
+    set col -1
+    foreach item [::Github::Known] {
+        lassign $item key txt url icon
+        incr col
+        set w .splash.web.$col
+
+        # If the file is local, use that instead of the web version
+        set tail [file tail $url]
+        if {$tail in $localFiles} {
+            set cmd [list SplashGo $tail]
+            set tooltip "Open local copy of\n$txt"
+        } else {
+            set cmd [list ::Github::Open $key]
+            set tooltip "Download from the web\n$txt"
+        }
+        ::ttk::button $w -text $txt -command $cmd -image $icon -compound top
+        grid $w -sticky ns -row 0 -column $col -padx .1i
+        ::tooltip::tooltip $w $tooltip
+    }
+
+    # Buttons for local .shp and .zip files
     set id -1
-    foreach shp [lrange [lsort -dictionary [glob -nocomplain *.shp *.zip]] 0 10] {
+    foreach shp [lrange $localFiles 0 10] {
         incr id
         set w .splash.buttons.$id
         ::ttk::button $w -text $shp -command [list SplashGo $shp]
@@ -1151,17 +1195,9 @@ proc Splash {} {
     }
     grid config $w -pady {0 .2i}
 
-    foreach item [::Github::Known] {
-        lassign $item key txt
-        incr id
-        set w .splash.buttons.$id
-        set txt "Web -- $txt"
-        set cmd [list ::Github::Open $key]
-        ::ttk::button $w -text $txt -command $cmd
-        grid $w -sticky ew
-    }
-
-    grid .splash.buttons.close -pady {.25i 0}
+    # Close button
+    ::ttk::button .splash.buttons.close -text "Open Shape File Dialog" -command GetNewFile
+    grid .splash.buttons.close -pady {.25i 0} -sticky ew
 
     place .splash -in .c -relx .5 -rely .4 -anchor c
     # after 30000 {destroy .splash}
@@ -1263,13 +1299,13 @@ proc AtExit {{returnCode 0}} {
 namespace eval ::Github {
     variable URL
     set baseUrl https://raw.githubusercontent.com/kpvetter/shapefile/refs/heads/main/sampleData
-    set URL(worldShapes.zip) [list "Countries of the world" $baseUrl/worldShapes.zip]
-    set URL(cb_2021_us_state_20m.zip) [list "States in the USA" $baseUrl/cb_2021_us_state_20m.zip]
+    set URL(worldShapes.zip) [list "World Countries" $baseUrl/worldShapes.zip ::img::world_icon]
+    set URL(cb_2021_us_state_20m.zip) [list "United States" $baseUrl/cb_2021_us_state_20m.zip ::img::usa_icon]
 }
 
 proc ::Github::Known {} {
     variable URL
-    set all [lmap {key value} [array get URL] { list $key [lindex $value 0] }]
+    set all [lmap {key value} [array get URL] { list $key {*}$value }]
     return [lsort -dictionary -index 0 $all]
 }
 
@@ -1349,6 +1385,10 @@ proc LoadIcons {} {
     ::img::logo_icon copy ::img::logo -subsample 4 4
     image create photo ::img::logo_icon_flip
     ::img::logo_icon_flip copy ::img::logo -subsample -4 4
+
+    image create photo ::img::usa_icon -file $S(icon,usa)
+    image create photo ::img::world_icon
+    ::img::world_icon copy ::img::logo_icon
 }
 
 ################################################################
