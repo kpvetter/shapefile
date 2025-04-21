@@ -4,7 +4,7 @@ exec tclsh $0 ${1+"$@"}
 
 ##+##########################################################################
 #
-# coloring.tcl -- Gives a coloring scheme for a list of names that avoids touching colors
+# coloring.tcl -- Using hard-coded neighboring data, insuring adjacent shapes have different colors
 # by Keith Vetter 2025-04-20
 #
 package require cksum
@@ -12,13 +12,7 @@ package require cksum
 namespace eval ::Coloring {
     variable BORDERS
     variable COLORS [list lightyellow cyan orange green pink sienna1 yellow red blue springgreen]
-    # FIX
-    #   Congo
-    #   Palestine Territory
 
-    #   Vatican City
-    #   Laos
-    #   Côte d'Ivoire
     # NB. Georgia is both a state and a country so we combine the two
     array set BORDERS {
         "Afghanistan" {"China" "Iran" "Pakistan" "Tajikistan" "Turkmenistan" "Uzbekistan" }
@@ -52,7 +46,7 @@ namespace eval ::Coloring {
         "Chile" {"Argentina" "Bolivia" "Peru" }
         "China" {"Afghanistan" "Bhutan" "Hong Kong" "India" "Kazakhstan" "North Korea" "Kyrgyzstan" "Laos" "Macao" "Mongolia" "Myanmar" "Nepal" "Pakistan" "Russian Federation" "Tajikistan" "Vietnam" }
         "Colombia" {"Brazil" "Ecuador" "Panama" "Peru" "Venezuela" }
-        "Congo" {"Angola", "Cameroon" "Central African Republic" "Congo DRC" "Gabon" }
+        "Congo" {"Angola" "Cameroon" "Central African Republic" "Congo DRC" "Gabon" }
         "Congo DRC" {"Angola" "Burundi" "Central African Republic" "Congo" "Rwanda" "South Sudan" "Tanzania" "Uganda" "Zambia"}
         "Costa Rica" {"Nicaragua" "Panama" }
         "Côte d'Ivoire" {"Burkina Faso" "Ghana" "Guinea" "Liberia" "Mali" }
@@ -244,6 +238,7 @@ namespace eval ::Coloring {
     }
 }
 proc ::Coloring::CreateColoringScheme {nameList {nonce ""}} {
+    # Returns dictionary with keys being entries from the nameList and values being a color
     variable BORDERS
     variable COLORS
 
@@ -266,6 +261,7 @@ proc ::Coloring::CreateColoringScheme {nameList {nonce ""}} {
     return $coloringScheme
 }
 proc ::Coloring::RandomColor {colors nonce} {
+    # Pick a pseudo-random color from a list of colors
     if {$colors eq {}} { return "" }
     set clrIndex [expr {[::crc::cksum $nonce] % [llength $colors]}]
     set color [lindex $colors $clrIndex]
