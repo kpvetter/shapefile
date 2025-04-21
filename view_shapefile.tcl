@@ -18,6 +18,7 @@ exec tclsh $0 ${1+"$@"}
 # tooltips
 # colorScheme fails with "Draw New"
 # ???add neighbors to tooltip???
+# pretty file name with files inside a zip
 #
 # DONE meridian lines
 # DONE progress bar or busy mouse
@@ -672,7 +673,7 @@ proc IndexListToNameList {indexList} {
     foreach dbRow $S(dbData) {
         lassign $dbRow index name
         if {$index in $indexList} {
-            lappend nameList $name
+            lappend nameList [expr {$name ne "" ? $name : "Shape $index"}]
         }
     }
     set nameList [lsort -dictionary $nameList]
@@ -943,7 +944,7 @@ proc ::Zip::Open {zipName} {
 }
 
 proc ::Zip::FindAllShapeFiles {cwd} {
-    # Search a directory (in this case inside a zi file) for all shapefiles
+    # Recursively search a directory (in this case inside a zip file) for all shapefiles
     # Result will be a list of tuples: {fname.shp fname.shx fname.dbf}
 
     set shpData {}
@@ -989,6 +990,7 @@ proc AtExit {{returnCode 0}} {
 }
 
 namespace eval ::Github {
+    # Holds info about Shapefiles we have stored in Github or possibly elsewhere on the web
     variable URL
     set baseUrl https://raw.githubusercontent.com/kpvetter/shapefile/refs/heads/main/sampleData
     set URL(worldShapes.zip) [list "World Countries" $baseUrl/worldShapes.zip ::img::world_icon]
@@ -997,7 +999,7 @@ namespace eval ::Github {
 
 proc ::Github::Known {} {
     variable URL
-    set all [lmap {key value} [array get URL] { list $key {*}$value }]
+    set all [lmap {key value} [array get URL] { linsert $value 0 $key }]
     return [lsort -dictionary -index 0 $all]
 }
 
