@@ -228,7 +228,10 @@ if {[info exists argv0] && [file tail [info script]] eq [file tail $argv0]} {
         return $argv
     }
 
-    "proc" DoOneFile {fname columnIndicesOrNames rowIndex} {
+    "proc" DoOneFile {zname columnIndicesOrNames rowIndex} {
+        lassign [ExtractDBF $zname] fname emsg
+        if {$fname eq ""} { puts $emsg ; return }
+
         set tail [file tail $fname]
         puts "\n$tail\n[string repeat = [string length $tail]]"
 
@@ -288,8 +291,23 @@ if {[info exists argv0] && [file tail [info script]] eq [file tail $argv0]} {
         }
     }
 
+    "proc" ExtractDBF {zipName} {
+        if {[file extension $zipName] eq ".zip"} {
+            set fname [::Zip::Open $zipName .dbf]
+            if {$fname eq ""} {
+                return [list "" "No DBaseIII found in $zipName"]
+            }
+            return [list $fname ""]
+        } else {
+            return [list $zipName ""]
+        }
+    }
+
     ################################################################
     ################################################################
+
+    source [file join [file dirname $argv0] zipopen.tcl]
+    trace add execution exit enter ::Zip::Done
 
     set OPTIONS(columnIndices) {}
     set OPTIONS(rowIndex) 1
