@@ -19,6 +19,7 @@ exec tclsh $0 ${1+"$@"}
 # colorScheme fails with "Draw New"
 # ???add neighbors to tooltip???
 # pretty file name with files inside a zip
+# fractional meridians for shapes under 1 degree in size???
 #
 # DONE meridian lines
 # DONE progress bar or busy mouse
@@ -32,7 +33,7 @@ exec tclsh $0 ${1+"$@"}
 # DONE show how many shapes
 # DONE tooltips
 # DONE implement keep selected
-# NO handle zip files
+# NOPE handle zip files
 # DONE all on/off in ranges panel
 # DONE center image
 # DONE do points shapes???
@@ -63,8 +64,10 @@ exec tclsh $0 ${1+"$@"}
 # DONE Removed beta filtering
 # DONE Renamed Beta Regions
 # DONE keyboard navigation in shape list
-# NO Splash -- don't duplicate github downloads with local ones
+# NOPE Splash -- don't duplicate github downloads with local ones
 # DONE coloring scheme insuring neighbors have different colors
+# DONE use trace execution add exit enter AtExit
+# DONE right click on region clears all then adds
 
 package require Tk
 package require fileutil
@@ -120,6 +123,7 @@ proc DoDisplay {} {
     wm title . "Shapefile Viewer"
     wm iconphoto . ::img::logo
     wm iconname . "View Shape"
+    wm protocol . exit
 
     ::ttk::frame .top
     label .top.title -textvariable S(fname,pretty) -anchor c -font $S(title_font) -bg $S(canvas,bg)
@@ -364,13 +368,20 @@ proc PickDBaseColumn {colData} {
     set S(pick,column) [$w cget -value]
     grid $w -sticky ew -row $row -column $col
 
+    set firstChoices [list "name"]
+    set secondChoices [list "country" "county" "countyname"]
+
     foreach datum $colData {
         lassign $datum idx name len
         set w $f.column_$idx
         set label "$name ($len)"
-        if {[string tolower $name] eq "name"} {
+
+        # Pick default value
+        set lname [string tolower $name]
+        if {$lname in $firstChoices} {
             set S(pick,column) [list $idx $name]
-        } elseif {$S(pick,column) eq $S(NULL_VALUE) && [string tolower $name] eq "country"} {
+        }
+        if {$S(pick,column) eq $S(NULL_VALUE) && $lname in $secondChoices} {
             set S(pick,column) [list $idx $name]
         }
         ::ttk::radiobutton $w -text $label -variable S(pick,column) -value [list $idx $name]
@@ -794,9 +805,9 @@ proc DrawMeridians {} {
     set lons [expr {$right - $left}]
     set dlat [expr {$lats < 20 ? 1 : 10}]
     set dlon [expr {$lons < 20 ? 1 : 10}]
-    set dlat [set dlon [expr {max($dlat, $dlon)}]]
+    set delta [expr {max($dlat, $dlon)}]
 
-    _DrawMeridians $S(bbox,last) $dlat $dlon
+    _DrawMeridians $S(bbox,last) $delta $delta
     set S(meridians,bbox) $S(bbox,last)
 }
 proc _DrawMeridians {bbox dlat dlon} {
@@ -981,18 +992,18 @@ proc Progress {msg} {
 proc MyError {emsg} {
     tk_messageBox -icon error -type ok -message $emsg -parent .
 }
-proc AtExit {{returnCode 0}} {
+proc AtExit {args} {
     global S
     if {$S(tempdir) ne ""} {
         catch {file delete -force -- $S(tempdir)}
     }
-    __real_exit $returnCode
 }
 
 namespace eval ::Github {
     # Holds info about Shapefiles we have stored in Github or possibly elsewhere on the web
     variable URL
     set baseUrl https://raw.githubusercontent.com/kpvetter/shapefile/refs/heads/main/sampleData
+    # URL(x) [list title url icon]
     set URL(worldShapes.zip) [list "World Countries" $baseUrl/worldShapes.zip ::img::world_icon]
     set URL(cb_2021_us_state_20m.zip) [list "United States" $baseUrl/cb_2021_us_state_20m.zip ::img::usa_icon]
 }
@@ -1088,10 +1099,11 @@ proc LoadIcons {} {
 ################################################################
 ################################################################
 
-if {[info commands __real_exit] eq ""} {
-    rename exit __real_exit
+trace info execution exit
+foreach tinfo [trace info execution exit] {
+    trace remove execution exit {*}$tinfo
 }
-rename AtExit exit
+trace add execution exit enter AtExit
 
 DoDisplay
 Splash
