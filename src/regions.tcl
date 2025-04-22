@@ -223,10 +223,31 @@ namespace eval ::Regions {
         "Tanzania" "Timor-Leste" "Tokelau" "Tonga" "Tuvalu" "Uganda"
         "United States Minor Outlying Islands" "Uruguay" "Vanuatu" "Wallis and Futuna" "Zambia"
         "Zimbabwe"}
+
+    # California county regions
+    # https://census.ca.gov/regions/
+    set BLOCS(a0,Superior_California) {
+        "Butte" "Colusa" "El Dorado" "Glenn" "Lassen" "Modoc" "Nevada" "Placer" "Plumas"
+        "Sacramento" "Shasta" "Sierra" "Siskiyou" "Sutter" "Tehama" "Yolo" "Yuba"}
+    set BLOCS(a1,North_Coast) {"Del Norte" "Humboldt" "Lake" "Mendocino" "Napa" "Sonoma" "Trinity"}
+    set BLOCS(a2,Bay_Area) {
+        "Alameda" "Contra Costa" "Marin" "San Francisco" "San Mateo" "Santa Clara" "Solano"}
+    set BLOCS(a3,North_San_Joaquin_Valley) {
+        "Alpine" "Amador" "Calaveras" "Madera" "Mariposa" "Merced" "Mono" "San Joaquin"
+        "Stanislaus" "Tuolumne"}
+    set BLOCS(a4,South_San_Joaquin_Valley) {"Fresno" "Inyo" "Kern" "Kings" "Tulare"}
+    set BLOCS(a5,Central_Coast) {
+        "Monterey" "San Benito" "San Luis Obispo" "Santa Barbara" "Santa Cruz" "Ventura"}
+    set BLOCS(a6,Inland_Empire) {"Riverside" "San Bernardino"}
+    set BLOCS(a7,Los_Angeles) {"Los Angeles"}
+    set BLOCS(a8,Orange) {"Orange"}
+    set BLOCS(a9,San_Diego) {"Imperial" "San Diego"}
+
 }
 proc ::Regions::InstallBlocs {} {
     variable frame
 
+    set grid_max_columns 3
     destroy {*}[winfo child $frame]
     grid forget $frame
     ::tooltip::clear $frame._*
@@ -239,12 +260,14 @@ proc ::Regions::InstallBlocs {} {
     set row -1
     set col -1
     foreach bloc $which {
-        set col [expr {($col + 1) % 4}]
+        set col [expr {($col + 1) % $grid_max_columns}]
         incr row [expr {$col == 0}]
         set w $frame.$row,$col
 
         lassign [split [string map {"_" " "} $bloc] ","] _ name tooltip
         ::ttk::button $w -text $name -command [list ::Regions::ToggleBlocOn $bloc]
+        bind $w <2> [list ::Regions::ToggleBlocOn $bloc True]
+        bind $w <3> [list ::Regions::ToggleBlocOn $bloc True]
         if {$tooltip ne ""} {
             set tooltip [string map {@ "\n"} $tooltip]
             ::tooltip::tooltip $w $tooltip
@@ -254,7 +277,7 @@ proc ::Regions::InstallBlocs {} {
     }
     grid columnconfigure $frame all -weight 1 -uniform a
 }
-proc ::Regions::ToggleBlocOn {bloc} {
+proc ::Regions::ToggleBlocOn {bloc {clear False}} {
     variable BLOCS
     global S
 
@@ -268,7 +291,9 @@ proc ::Regions::ToggleBlocOn {bloc} {
 
     # Turn on CheckedListBox ids
     if {$idList ne {}} {
-        # ToggleRanges "alloff"
+        if {$clear} {
+            ToggleRanges "alloff"
+        }
         ::CheckedListBox::ToggleSome $S(tree) 1 $idList
     }
 }
