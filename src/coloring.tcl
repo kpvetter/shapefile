@@ -27,8 +27,8 @@ proc ::Coloring::NewBaseColorScheme {shape recordCount} {
     variable COLORS
     variable BASE_SCHEME
 
-    unset -nocomplain borders
     set indexList [range 1 $recordCount+1]
+    unset -nocomplain borders
     ::Coloring::_ComputeOverlaps $shape $indexList borders
 
     set BASE_SCHEME [lrepeat [expr {$recordCount + 1}] X]
@@ -49,7 +49,8 @@ proc ::Coloring::NewBaseColorScheme {shape recordCount} {
                 set who [lindex [IndexListToNameList [list $idx]] 0]
                 puts stderr "$idx '$who' has too many neighbors"
             } else {
-                set color [lindex $available [expr {$idx % [llength $available]}]]
+                set colorIdx [expr {int(rand() * [llength $available])}]
+                set color [lindex $available $colorIdx]
             }
         }
         if {$color eq ""} {
