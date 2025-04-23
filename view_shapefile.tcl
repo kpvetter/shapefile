@@ -68,6 +68,7 @@ exec tclsh $0 ${1+"$@"}
 # DONE coloring scheme insuring neighbors have different colors
 # DONE use trace execution add exit enter AtExit
 # DONE right click on region clears all then adds
+# DONE redid coloring to dynamically determine bordering shapes
 
 package require Tk
 package require fileutil
@@ -229,15 +230,15 @@ proc InstallZipFile {zipName} {
     if {[file extension $zipName] eq ".zip"} {
         set fname [::Zip::Open $zipName]
         if {$fname ne ""} {
-            InstallNewFile $fname
+            InstallNewFile $fname $zipName
         } else {
             MyError "No Shapefiles found in $zipName"
         }
     } else {
-        InstallNewFile $zipName
+        InstallNewFile $zipName $zipName
     }
 }
-proc InstallNewFile {fname} {
+proc InstallNewFile {fname trueName} {
     global S
 
     ::tooltip::tooltip clear
@@ -254,7 +255,7 @@ proc InstallNewFile {fname} {
         return
     }
     set S(fname) $fname
-    set S(fname,pretty) [file rootname [file tail $fname]]
+    set S(fname,pretty) [file rootname [file tail $trueName]]
     set S(fname,pretty2) $S(fname,pretty)
     set header [$S(shape) Header]
     set type [dict get $header shapeType]
@@ -284,6 +285,7 @@ proc InstallNewFile {fname} {
     }
 
     set S(dbData) $dbData
+    set S(recordCount) $recordCount
     set checkboxData {}
     foreach datum $S(dbData) {
         lassign $datum row value
@@ -306,6 +308,8 @@ proc InstallNewFile {fname} {
     ::Regions::InstallBlocs
     update
     bind $S(tree) <KeyPress> {::CheckedListBox::_KeyPress %W %A}
+
+    ::Coloring::NewBaseColorScheme $S(shape) $S(recordCount)
 }
 proc ExtractAllDBaseInfo {fname} {
     # Returns list of {row# value} from *.dbf for selected column
@@ -737,11 +741,10 @@ proc DoSelectedShapes {how} {
     .c config -cursor watch
     update
 
-    set colorScheme [::Coloring::CreateColoringScheme $nameList $S(bbox,cnt)]
     set cnt 0
     foreach idx $indexList name $nameList {
         incr cnt
-        set color [dict get $colorScheme $name]
+        set color [::Coloring::GetColor $idx $S(bbox,cnt)]
         Progress "Drawing #$cnt of $total"
         DoOneShape $S(shape) $idx $S(bbox,last) $color
         if {$cnt % 10 == 0} update
@@ -1095,6 +1098,7 @@ proc LoadIcons {} {
     image create photo ::img::world_icon
     ::img::world_icon copy ::img::logo_icon
 }
+
 
 ################################################################
 ################################################################
