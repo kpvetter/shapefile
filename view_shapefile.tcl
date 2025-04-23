@@ -16,10 +16,9 @@ exec tclsh $0 ${1+"$@"}
 # url links to good shape files outside of Github????
 # some shape files want 2 column keys, e.g. cs_2021_us_county_20m wants county & state names
 # tooltips
-# colorScheme fails with "Draw New"
-# ???add neighbors to tooltip???
-# pretty file name with files inside a zip
 # fractional meridians for shapes under 1 degree in size???
+# Make Splash open file widget the default???
+# UK counties is messed up -- wrong data???
 #
 # DONE meridian lines
 # DONE progress bar or busy mouse
@@ -66,9 +65,11 @@ exec tclsh $0 ${1+"$@"}
 # DONE keyboard navigation in shape list
 # NOPE Splash -- don't duplicate github downloads with local ones
 # DONE coloring scheme insuring neighbors have different colors
-# DONE use trace execution add exit enter AtExit
+# DONE use trace add execution add exit enter AtExit
 # DONE right click on region clears all then adds
 # DONE redid coloring to dynamically determine bordering shapes
+# DONE pretty file name with files inside a zip
+# DONE random base coloring
 
 package require Tk
 package require fileutil
@@ -191,8 +192,8 @@ proc ControlWindow {w} {
 
     # All on and off buttons
     set ww $w.all
-    ::ttk::button $ww.on -text "All on" -command {ToggleRanges "allon"}
-    ::ttk::button $ww.off -text "All off" -command {ToggleRanges "alloff"}
+    ::ttk::button $ww.on -text "All on" -command {ToggleAll "allon"}
+    ::ttk::button $ww.off -text "All off" -command {ToggleAll "alloff"}
     grid x $ww.on x $ww.off x -row 0
     grid columnconfig $ww {0 2 4} -weight 1
 
@@ -603,8 +604,11 @@ proc EraseShapes {how} {
     if {$how eq "erase"} {
         TooltipClear shape
         .c delete shape
+        set S(indexList,last) {}
         return
     }
+
+    # Clear selected shapes
     set indexList [CheckedToIndexList]
 
     foreach idx $indexList {
@@ -616,8 +620,9 @@ proc EraseShapes {how} {
     # Mark on those states still drawn
     set indexList [CanvasToIndexList]
     set idList [IndexListToIdList $indexList]
-    ToggleRanges "alloff"
+    ToggleAll "alloff"
     ::CheckedListBox::ToggleSome $S(tree) 1 $idList
+    set S(indexList,last) [CheckedToIndexList]
 }
 proc KeepSelected {} {
     set ::S(indexList,last) [CheckedToIndexList]
@@ -788,7 +793,7 @@ proc DrawBBox {} {
     .c lower mask
 }
 
-proc ToggleRanges {onoff} {
+proc ToggleAll {onoff} {
     global S
 
     CheckedListBox::ToggleAll $S(tree) [expr {$onoff eq "allon"}]
@@ -908,6 +913,8 @@ proc Splash {} {
 
     place .splash -in .c -relx .5 -rely .4 -anchor c
     # after 30000 {destroy .splash}
+    bind .splash.logo <2> {destroy .splash}
+    bind .splash.logo <3> {destroy .splash}
 }
 proc SplashGo {fname} {
     destroy .splash
@@ -1108,6 +1115,7 @@ foreach tinfo [trace info execution exit] {
     trace remove execution exit {*}$tinfo
 }
 trace add execution exit enter AtExit
+trace add execution xx enter AtExit
 
 DoDisplay
 Splash
