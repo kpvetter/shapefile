@@ -14,6 +14,8 @@ if {[info commands ::Shapefile::Go] eq ""} {
     puts stderr "Error: Shapefile package not loaded ($shapefile)\n$emsg"
     exit 1
 }
+source [file join [file dirname $argv0] zipopen.tcl]
+trace add execution exit enter ::Zip::Done
 
 array set shapeTypes {0 Null
     1 Point 3 PolyLine 5 Polygon 8 MultiPoint
@@ -23,26 +25,6 @@ array set shapeTypes {0 Null
 
 array set OPTIONS {verbose 0 range {} log NONE}
 array set summary {count 0 data {} max 10}
-
-interp alias {} ShowType0  {} ShowTypeNull   ;# Null
-
-interp alias {} ShowType1  {} ShowTypePoint  ;# Point
-interp alias {} ShowType11 {} ShowTypePoint  ;# PointZ
-interp alias {} ShowType21 {} ShowTypePoint  ;# PointM
-
-interp alias {} ShowType3  {} ShowTypePoly   ;# PolyLine
-interp alias {} ShowType13 {} ShowTypePoly   ;# PolyLineZ
-interp alias {} ShowType23 {} ShowTypePoly   ;# PolyLineM
-
-interp alias {} ShowType5  {} ShowTypePoly   ;# Polygon
-interp alias {} ShowType15 {} ShowTypePoly   ;# PolygonZ
-interp alias {} ShowType25 {} ShowTypePoly   ;# PolygonM
-
-interp alias {} ShowType8  {} ShowTypeMultiPoint ;# MultiPoint
-interp alias {} ShowType18  {} ShowTypeMultiPoint ;# MultiPointZ
-interp alias {} ShowType28  {} ShowTypeMultiPoint ;# MultiPointM
-
-interp alias {} ShowType31  {} ShowTypeMultiPatch ;# MultiPatch
 
 proc ShowTypeNull {recordNumber type record} {
     # Displays the contents of record type 0 (Null)
@@ -281,8 +263,10 @@ proc ParseArgs {argv} {
     set OPTIONS(fnames) $argv
     set OPTIONS(width) [::tcl::mathfunc::max {*}[lmap v $argv { string length [file tail $v] }]]
 }
-proc DoOneFile {fname} {
+proc DoOneFile {zname} {
     global OPTIONS summary
+    lassign [ExtractSHP $zname] fname emsg
+    if {$fname eq ""} { puts $emsg ; return }
 
     set summary(count) 0
     set summary(data) {}
@@ -354,6 +338,39 @@ proc putsMax {msg {length 100}} {
         puts $msg
     }
 }
+proc ExtractSHP {zipName} {
+    if {[file extension $zipName] eq ".zip"} {
+        set fname [::Zip::Open $zipName .shp]
+        if {$fname eq ""} {
+            return [list "" "No Shapefile found in $zipName"]
+        }
+        return [list $fname ""]
+    } else {
+        return [list $zipName ""]
+    }
+}
+
+
+interp alias {} ShowType0  {} ShowTypeNull   ;# Null
+
+interp alias {} ShowType1  {} ShowTypePoint  ;# Point
+interp alias {} ShowType11 {} ShowTypePoint  ;# PointZ
+interp alias {} ShowType21 {} ShowTypePoint  ;# PointM
+
+interp alias {} ShowType3  {} ShowTypePoly   ;# PolyLine
+interp alias {} ShowType13 {} ShowTypePoly   ;# PolyLineZ
+interp alias {} ShowType23 {} ShowTypePoly   ;# PolyLineM
+
+interp alias {} ShowType5  {} ShowTypePoly   ;# Polygon
+interp alias {} ShowType15 {} ShowTypePoly   ;# PolygonZ
+interp alias {} ShowType25 {} ShowTypePoly   ;# PolygonM
+
+interp alias {} ShowType8  {} ShowTypeMultiPoint ;# MultiPoint
+interp alias {} ShowType18  {} ShowTypeMultiPoint ;# MultiPointZ
+interp alias {} ShowType28  {} ShowTypeMultiPoint ;# MultiPointM
+
+interp alias {} ShowType31  {} ShowTypeMultiPatch ;# MultiPatch
+
 ################################################################
 ################################################################
 
