@@ -373,85 +373,85 @@ set ::Regions::BLOCS(a9,San_Diego) {"Imperial" "San Diego"}
 # PASSWORD: https://www.igismap.com/download-united-kingdom-administrative-boundary-shapefiles-countries-regions-counties-unitary-authorities-wards/
 # PASSWORD: https://story.mapog.com/app/gisdata/united%20kingdom/United%20Kingdom%20Country%20Boundary
 
-set ::Regions::BLOCS(uk0,England) {
-    "Bedfordshire" "Berkshire" "Bristol" "Buckinghamshire" "Cambridgeshire" "Cheshire" "Cornwall" "Cumbria" "Derbyshire" "Devon" "Dorset" "Durham" "East Riding of Yorkshire" "East Sussex" "Essex" "Gloucestershire" "Greater London" "Greater Manchester" "Hampshire" "Herefordshire" "Hertfordshire" "Isle of Wight" "Kent" "Lancashire" "Leicestershire" "Lincolnshire" "Merseyside" "Middlesex" "Norfolk" "North Yorkshire" "Northamptonshire" "Northumberland" "Nottinghamshire" "Oxfordshire" "Rutland" "Shropshire" "Somerset" "South Yorkshire" "Staffordshire" "Suffolk" "Surrey" "Tyne and Wear" "Warwickshire" "West Midlands" "West Sussex" "West Yorkshire" "Wiltshire" "Worcestershire"}
-set ::Regions::BLOCS(uk0,Northern_Ireland) {
-    "Antrim" "Armagh" "Down" "Fermanagh" "Londonderry" "Tyrone"}
-set ::Regions::BLOCS(uk0,Scotland) {
-    "Aberdeen City" "Aberdeenshire" "Angus" "Argyll and Bute" "Clackmannanshire" "Dumfries and Galloway" "Dundee" "East Ayrshire" "East Dunbartonshire" "East Lothian" "East Renfrewshire" "Edinburgh" "Falkirk" "Fife" "Glasgow" "Highland" "Inverclyde" "Midlothian" "Moray" "North Ayrshire" "North Lanarkshire" "Orkney" "Perth and Kinross" "Renfrewshire" "Scottish Borders" "Shetland Isles" "South Ayrshire" "South Lanarkshire" "Stirlingshire" "West Dunbartonshire" "West Lothian" "Western Isles"}
-set ::Regions::BLOCS(uk0,Wales) {
-    "Anglesey" "Blaenau Gwent" "Bridgend" "Caerphilly" "Cardiff" "Carmarthenshire"
-    "Ceredigion" "Conwy" "Denbighshire" "Flintshire" "Glamorgan" "Gwynedd" "Merthyr Tydfil"
-    "Monmouthshire" "Neath Port Talbot" "Newport" "Newport City" "Pembrokeshire" "Powys"
-    "Rhondda Cynon Taff" "Swansea" "Torfaen" "Wrexham"
-}
-set ::Regions::BLOCS(uk0,United_Kingdom) {
-    "Aberdeen City" "Aberdeenshire" "Anglesey" "Angus"
-    "Argyll and Bute" "Bedfordshire" "Berkshire" "Blaenau Gwent" "Bridgend"
-    "Bristol" "Buckinghamshire" "Caerphilly" "Cambridgeshire"
-    "Cardiff" "Carmarthenshire" "Ceredigion" "Cheshire"
-    "Clackmannanshire" "Conwy" "Cornwall" "Antrim"
-    "Armagh" "Down" "Fermanagh" "Londonderry"
-    "Tyrone" "Cumbria" "Denbighshire" "Derbyshire" "Devon"
-    "Dorset" "Dumfries and Galloway" "Dundee" "Durham" "East Ayrshire"
-    "East Dunbartonshire" "East Lothian" "East Renfrewshire"
-    "East Riding of Yorkshire" "East Sussex" "Edinburgh" "Essex" "Falkirk"
-    "Fife" "Flintshire" "Glamorgan" "Glasgow" "Gloucestershire"
-    "Greater London" "Greater Manchester" "Gwynedd" "Hampshire"
-    "Herefordshire" "Hertfordshire" "Highland" "Inverclyde"
-    "Isle of Wight" "Kent" "Lancashire" "Leicestershire" "Lincolnshire"
-    "Merseyside" "Merthyr Tydfil" "Middlesex" "Midlothian"
-    "Monmouthshire" "Moray" "Neath Port Talbot" "Newport"
-    "Newport City" "Norfolk" "North Ayrshire" "North Lanarkshire"
-    "North Yorkshire" "Northamptonshire" "Northumberland" "Nottinghamshire"
-    "Orkney" "Oxfordshire" "Pembrokeshire" "Perth and Kinross" "Powys"
-    "Renfrewshire" "Rhondda Cynon Taff" "Rutland" "Scottish Borders"
-    "Shetland Isles" "Shropshire" "Somerset" "South Ayrshire"
-    "South Lanarkshire" "South Yorkshire" "Staffordshire" "Stirlingshire"
-    "Suffolk" "Surrey" "Swansea" "Torfaen" "Tyne and Wear"
-    "Warwickshire" "West Dunbartonshire" "West Lothian"
-    "West Midlands" "West Sussex" "West Yorkshire" "Western Isles"
-    "Wiltshire" "Worcestershire" "Wrexham"}
+# set ::Regions::BLOCS(uk0,England) {
+#     "Bedfordshire" "Berkshire" "Bristol" "Buckinghamshire" "Cambridgeshire" "Cheshire" "Cornwall" "Cumbria" "Derbyshire" "Devon" "Dorset" "Durham" "East Riding of Yorkshire" "East Sussex" "Essex" "Gloucestershire" "Greater London" "Greater Manchester" "Hampshire" "Herefordshire" "Hertfordshire" "Isle of Wight" "Kent" "Lancashire" "Leicestershire" "Lincolnshire" "Merseyside" "Middlesex" "Norfolk" "North Yorkshire" "Northamptonshire" "Northumberland" "Nottinghamshire" "Oxfordshire" "Rutland" "Shropshire" "Somerset" "South Yorkshire" "Staffordshire" "Suffolk" "Surrey" "Tyne and Wear" "Warwickshire" "West Midlands" "West Sussex" "West Yorkshire" "Wiltshire" "Worcestershire"}
+# set ::Regions::BLOCS(uk0,Northern_Ireland) {
+#     "Antrim" "Armagh" "Down" "Fermanagh" "Londonderry" "Tyrone"}
+# set ::Regions::BLOCS(uk0,Scotland) {
+#     "Aberdeen City" "Aberdeenshire" "Angus" "Argyll and Bute" "Clackmannanshire" "Dumfries and Galloway" "Dundee" "East Ayrshire" "East Dunbartonshire" "East Lothian" "East Renfrewshire" "Edinburgh" "Falkirk" "Fife" "Glasgow" "Highland" "Inverclyde" "Midlothian" "Moray" "North Ayrshire" "North Lanarkshire" "Orkney" "Perth and Kinross" "Renfrewshire" "Scottish Borders" "Shetland Isles" "South Ayrshire" "South Lanarkshire" "Stirlingshire" "West Dunbartonshire" "West Lothian" "Western Isles"}
+# set ::Regions::BLOCS(uk0,Wales) {
+#     "Anglesey" "Blaenau Gwent" "Bridgend" "Caerphilly" "Cardiff" "Carmarthenshire"
+#     "Ceredigion" "Conwy" "Denbighshire" "Flintshire" "Glamorgan" "Gwynedd" "Merthyr Tydfil"
+#     "Monmouthshire" "Neath Port Talbot" "Newport" "Newport City" "Pembrokeshire" "Powys"
+#     "Rhondda Cynon Taff" "Swansea" "Torfaen" "Wrexham"
+# }
+# set ::Regions::BLOCS(uk0,United_Kingdom) {
+#     "Aberdeen City" "Aberdeenshire" "Anglesey" "Angus"
+#     "Argyll and Bute" "Bedfordshire" "Berkshire" "Blaenau Gwent" "Bridgend"
+#     "Bristol" "Buckinghamshire" "Caerphilly" "Cambridgeshire"
+#     "Cardiff" "Carmarthenshire" "Ceredigion" "Cheshire"
+#     "Clackmannanshire" "Conwy" "Cornwall" "Antrim"
+#     "Armagh" "Down" "Fermanagh" "Londonderry"
+#     "Tyrone" "Cumbria" "Denbighshire" "Derbyshire" "Devon"
+#     "Dorset" "Dumfries and Galloway" "Dundee" "Durham" "East Ayrshire"
+#     "East Dunbartonshire" "East Lothian" "East Renfrewshire"
+#     "East Riding of Yorkshire" "East Sussex" "Edinburgh" "Essex" "Falkirk"
+#     "Fife" "Flintshire" "Glamorgan" "Glasgow" "Gloucestershire"
+#     "Greater London" "Greater Manchester" "Gwynedd" "Hampshire"
+#     "Herefordshire" "Hertfordshire" "Highland" "Inverclyde"
+#     "Isle of Wight" "Kent" "Lancashire" "Leicestershire" "Lincolnshire"
+#     "Merseyside" "Merthyr Tydfil" "Middlesex" "Midlothian"
+#     "Monmouthshire" "Moray" "Neath Port Talbot" "Newport"
+#     "Newport City" "Norfolk" "North Ayrshire" "North Lanarkshire"
+#     "North Yorkshire" "Northamptonshire" "Northumberland" "Nottinghamshire"
+#     "Orkney" "Oxfordshire" "Pembrokeshire" "Perth and Kinross" "Powys"
+#     "Renfrewshire" "Rhondda Cynon Taff" "Rutland" "Scottish Borders"
+#     "Shetland Isles" "Shropshire" "Somerset" "South Ayrshire"
+#     "South Lanarkshire" "South Yorkshire" "Staffordshire" "Stirlingshire"
+#     "Suffolk" "Surrey" "Swansea" "Torfaen" "Tyne and Wear"
+#     "Warwickshire" "West Dunbartonshire" "West Lothian"
+#     "West Midlands" "West Sussex" "West Yorkshire" "Western Isles"
+#     "Wiltshire" "Worcestershire" "Wrexham"}
 
-set SHAPE_ENGLISH_COUNTIES {
-    "Aberdeenshire" "Anglesey" "Angus" "Antrim" "Argyllshire" "Armagh"
-    "Ayrshire" "Banffshire" "Bedfordshire" "Berkshire" "Berwickshire"
-    "Brecknockshire" "Buckinghamshire" "Buteshire" "Caernarfonshire"
-    "Caithness" "Cambridgeshire" "Cardiganshire" "Carmarthenshire"
-    "Cheshire" "Clackmannanshire" "Cornwall" "Cromartyshire"
-    "Cumberland" "Denbighshire" "Derbyshire" "Devon" "Dorset" "Down"
-    "Dumfriesshire" "Dunbartonshire" "Durham" "East Lothian" "Essex"
-    "Fermanagh" "Fife" "Flintshire" "Glamorgan" "Gloucestershire"
-    "Hampshire" "Herefordshire" "Hertfordshire" "Huntingdonshire"
-    "Inverness-shire" "Kent" "Kincardineshire" "Kinross-shire"
-    "Kirkcudbrightshire" "Lanarkshire" "Lancashire" "Leicestershire"
-    "Lincolnshire" "Londonderry" "Merionethshire" "Middlesex"
-    "Midlothian" "Monmouthshire" "Montgomeryshire" "Morayshire"
-    "Nairnshire" "Norfolk" "Northamptonshire" "Northumberland"
-    "Nottinghamshire" "Orkney" "Oxfordshire" "Peeblesshire"
-    "Pembrokeshire" "Perthshire" "Radnorshire" "Renfrewshire"
-    "Ross-shire" "Roxburghshire" "Rutland" "Selkirkshire" "Shetland"
-    "Shropshire" "Somerset" "Staffordshire" "Stirlingshire" "Suffolk"
-    "Surrey" "Sussex" "Sutherland" "Tyrone" "Warwickshire"
-    "West Lothian" "Westmorland" "Wigtownshire" "Wiltshire" "Worcestershire"
-    "Yorkshire" }
+# set SHAPE_ENGLISH_COUNTIES {
+#     "Aberdeenshire" "Anglesey" "Angus" "Antrim" "Argyllshire" "Armagh"
+#     "Ayrshire" "Banffshire" "Bedfordshire" "Berkshire" "Berwickshire"
+#     "Brecknockshire" "Buckinghamshire" "Buteshire" "Caernarfonshire"
+#     "Caithness" "Cambridgeshire" "Cardiganshire" "Carmarthenshire"
+#     "Cheshire" "Clackmannanshire" "Cornwall" "Cromartyshire"
+#     "Cumberland" "Denbighshire" "Derbyshire" "Devon" "Dorset" "Down"
+#     "Dumfriesshire" "Dunbartonshire" "Durham" "East Lothian" "Essex"
+#     "Fermanagh" "Fife" "Flintshire" "Glamorgan" "Gloucestershire"
+#     "Hampshire" "Herefordshire" "Hertfordshire" "Huntingdonshire"
+#     "Inverness-shire" "Kent" "Kincardineshire" "Kinross-shire"
+#     "Kirkcudbrightshire" "Lanarkshire" "Lancashire" "Leicestershire"
+#     "Lincolnshire" "Londonderry" "Merionethshire" "Middlesex"
+#     "Midlothian" "Monmouthshire" "Montgomeryshire" "Morayshire"
+#     "Nairnshire" "Norfolk" "Northamptonshire" "Northumberland"
+#     "Nottinghamshire" "Orkney" "Oxfordshire" "Peeblesshire"
+#     "Pembrokeshire" "Perthshire" "Radnorshire" "Renfrewshire"
+#     "Ross-shire" "Roxburghshire" "Rutland" "Selkirkshire" "Shetland"
+#     "Shropshire" "Somerset" "Staffordshire" "Stirlingshire" "Suffolk"
+#     "Surrey" "Sussex" "Sutherland" "Tyrone" "Warwickshire"
+#     "West Lothian" "Westmorland" "Wigtownshire" "Wiltshire" "Worcestershire"
+#     "Yorkshire" }
 
 
-proc 3Set {list1 list2} {
-    set only1 {}
-    set only2 {}
-    set both {}
-    foreach item1 $list1 {
-        if {$item1 in $list2} {
-            lappend both $item1
-        } else {
-            lappend only1 $item1
-        }
-    }
-    foreach item2 $list2 {
-        if {$item2 ni $list1} {
-            lappend only2 $item2
-        }
-    }
-    return [list $only1 $only2 $both]
-}
+# proc 3Set {list1 list2} {
+#     set only1 {}
+#     set only2 {}
+#     set both {}
+#     foreach item1 $list1 {
+#         if {$item1 in $list2} {
+#             lappend both $item1
+#         } else {
+#             lappend only1 $item1
+#         }
+#     }
+#     foreach item2 $list2 {
+#         if {$item2 ni $list1} {
+#             lappend only2 $item2
+#         }
+#     }
+#     return [list $only1 $only2 $both]
+# }
