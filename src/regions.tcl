@@ -50,10 +50,14 @@ proc ::Regions::ToggleBlocOn {bloc {clear False}} {
     variable BLOCS
     global S
 
-    set nameList $BLOCS($bloc)
+    if {$bloc in {x,North_Half x,East_Half x,South_Half x,West_Half}} {
+        set indexList [::Regions::Quadrants $bloc]
+    } else {
+        set nameList $BLOCS($bloc)
 
-    # Convert names into indexes in the Shapefile
-    set indexList [NameListToIndexList $nameList]
+        # Convert names into indexes in the Shapefile
+        set indexList [NameListToIndexList $nameList]
+    }
 
     # Convert indexes into CheckedListBox item ids
     set idList [IndexListToIdList $indexList]
@@ -80,6 +84,9 @@ proc ::Regions::WhichBlocs {} {
             lappend result $bloc
         }
     }
+    if {$result eq {}} {
+        set result {x,North_Half x,East_Half x,South_Half x,West_Half}
+    }
     return $result
 }
 proc ::Regions::Contains {who subList masterList} {
@@ -96,6 +103,27 @@ proc ::Regions::Contains {who subList masterList} {
     if {$found > $missing} { return True }
     return False
 }
+
+proc ::Regions::Quadrants {which} {
+    global S
+
+    array set SIDES {x,West_Half {3 +} x,South_Half {2 +} x,East_Half {1 -} x,North_Half {4 -}}
+
+    set bboxes {}
+    foreach idx $S(indexList,all) {
+        set meta [$S(shape) ReadOneMeta $idx]
+        lappend bboxes [list $idx {*}[dict get $meta box]]
+    }
+
+    set half [expr {$S(recordCount) / 2}]
+    lassign $SIDES($which) index direction
+    set dir [expr {$direction eq "-" ? "-decreasing" : "-increasing"}]
+    set items [lrange [lsort -real $dir -index $index $bboxes] 0 $half]
+    set itemList [lsort -integer [lmap x $items { lindex $x 0 }]]
+
+    return $itemList
+}
+
 ################################################################
 ################################################################
 #
