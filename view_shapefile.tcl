@@ -8,10 +8,15 @@ exec tclsh $0 ${1+"$@"}
 # by Keith Vetter 2025-02-13
 # https://www.census.gov/geographies/mapping-files/2021/geo/carto-boundary-file.html
 #
+# Shapefile file description:
+# https://www.esri.com/content/dam/esrisites/sitecore-archive/Files/Pdfs/library/whitepapers/pdfs/shapefile.pdf
+#
+# Dbase file description:
+# https://independent-software.com/dbase-dbf-dbt-file-format.html
+#
 # TODO:
 #
 # ColorScheme logic for BASE_SCHEME needs to be revised vis-a-vis filtering
-# Pick DB Column same wm geom as splash???
 # move wrapping longitude
 # help/about page???
 # option to mask overflow shapes???
@@ -73,6 +78,7 @@ exec tclsh $0 ${1+"$@"}
 # DONE pretty file name with files inside a zip
 # DONE random base coloring
 # DONE quadrants for shapefiles without any region info
+# DONE Pick DB Column now just a placed frame, ala .splash
 
 package require Tk
 package require fileutil
@@ -351,14 +357,9 @@ proc PickDBaseColumn {colData} {
     global S
 
     destroy .columns
-    toplevel .columns
-    wm title .columns "Pick Shape Name"
-    wm transient .columns .
+    ::ttk::frame .columns -padding {.2i .2i} -relief ridge -borderwidth 5
 
-    ::ttk::frame .columns.f
-    grid .columns.f -sticky news
-
-    set f .columns.f.title
+    set f .columns.title
     set TITLE $f
     set w $f.title
     ::ttk::frame $f -padding .2i -relief ridge -borderwidth 4
@@ -367,7 +368,7 @@ proc PickDBaseColumn {colData} {
     grid $w -sticky news
 
     # Column middle section
-    set f .columns.f.columns
+    set f .columns.columns
     set COLUMNS $f
     ::ttk::frame $f
     grid $f -row 1 -column 0 -sticky ew -pady {0 .1i}
@@ -408,7 +409,7 @@ proc PickDBaseColumn {colData} {
     grid columnconfigure $f {0 2 4} -weight 1
 
     # Buttons at the bottom
-    set f .columns.f.buttons
+    set f .columns.buttons
     set BUTTONS $f
     ::ttk::frame $f
     ::ttk::button $f.cancel -text Cancel \
@@ -419,14 +420,7 @@ proc PickDBaseColumn {colData} {
     grid $f.cancel $f.ok
     grid columnconfigure $f all -weight 1
 
-    # Locate window nicely in main window
-    update idletasks
-
-    scan [wm geometry .] "%dx%d+%d+%d" width height x0 y0
-    set x1 [expr {$x0 + [winfo reqwidth .] / 2 \
-                      - [winfo reqwidth .columns] / 2}]
-    set y1 [expr {$y0 + 100}]
-    wm geom .columns +$x1+$y1
+    place .columns -in .c -relx .5 -rely .4 -anchor c
 
     # Wait for user to make a choice
     grab set .columns
