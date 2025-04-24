@@ -12,7 +12,7 @@ namespace eval ::Filters {
 
     unset -nocomplain FILTERS
     set FILTERS(avoid) [list "UNK" ""]
-    set FILTERS(need) [list "MISSISSIPPI RIVER" "MISSOURI RIVER"]
+    set FILTERS(need) [list]
 }
 proc ::Filters::SetFilters {avoids needs} {
     variable FILTERS
