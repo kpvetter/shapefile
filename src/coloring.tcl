@@ -63,7 +63,11 @@ proc ::Coloring::GetColor {idx nonce} {
     variable COLORS
     variable BASE_SCHEME
 
-    set colorIdx [expr {($nonce + [lindex $BASE_SCHEME $idx]) % [llength $COLORS]}]
+    if {$idx > [llength $BASE_SCHEME]} {   ;# Possibly due to filtering
+        set colorIdx [expr {int(rand() * [llength $COLORS])}]
+    } else {
+        set colorIdx [expr {($nonce + [lindex $BASE_SCHEME $idx]) % [llength $COLORS]}]
+    }
     set color [lindex $COLORS $colorIdx]
     return $color
 }

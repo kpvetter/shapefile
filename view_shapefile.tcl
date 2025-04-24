@@ -10,6 +10,8 @@ exec tclsh $0 ${1+"$@"}
 #
 # TODO:
 #
+# ColorScheme logic for BASE_SCHEME needs to be revised vis-a-vis filtering
+# Pick DB Column same wm geom as splash???
 # move wrapping longitude
 # help/about page???
 # option to mask overflow shapes???
@@ -70,6 +72,7 @@ exec tclsh $0 ${1+"$@"}
 # DONE redid coloring to dynamically determine bordering shapes
 # DONE pretty file name with files inside a zip
 # DONE random base coloring
+# DONE quadrants for shapefiles without any region info
 
 package require Tk
 package require fileutil
@@ -81,9 +84,10 @@ http::register https 443 [list ::tls::socket -tls1 1]
 package require uri
 
 source [file join [file dirname $argv0] src/shapefile.tcl]
-source [file join [file dirname $argv0] src/dbf_lite.tsh]
 source [file join [file dirname $argv0] src/checkedlistbox.tcl]
 source [file join [file dirname $argv0] src/coloring.tcl]
+source [file join [file dirname $argv0] src/dbf_lite.tsh]
+source [file join [file dirname $argv0] src/filters.tcl]
 source [file join [file dirname $argv0] src/regions.tcl]
 
 set S(width) 1024
@@ -91,6 +95,7 @@ set S(height) 655
 set S(margin) 20
 set S(bbox,last) ""
 set S(bbox,cnt) 0
+set S(indexList,all) {}
 set S(indexList,last) {}
 set S(colors) [list lightyellow cyan orange green pink sienna1 yellow red blue springgreen]
 set S(fname) "<no file loaded>"
@@ -286,6 +291,7 @@ proc InstallNewFile {fname trueName} {
     }
 
     set S(dbData) $dbData
+    set S(indexList,all) [lmap x $S(dbData) { lindex $x 0 } ]
     set S(recordCount) $recordCount
     set checkboxData {}
     foreach datum $S(dbData) {
@@ -325,8 +331,9 @@ proc ExtractAllDBaseInfo {fname} {
 
     lassign [PickDBaseColumn $colData] column name
     if {$column == -1} { return {} }
-    set nameData [DBF::ReadRecordColumns $column 1 -1] ; list
-    set nameData [PrettyNames $nameData]
+    set nameData [::DBF::ReadRecordColumns [list $column] 1 -1] ; list
+    ;# set nameData [PrettyNames $nameData] -- data is only one column, don't need this
+    set nameData [::Filters::FilterDBaseInfo $nameData]
     return $nameData
 }
 proc PrettyNames {nameData} {
@@ -604,6 +611,7 @@ proc EraseShapes {how} {
     if {$how eq "erase"} {
         TooltipClear shape
         .c delete shape
+        ToggleAll "alloff"
         set S(indexList,last) {}
         return
     }
@@ -1110,7 +1118,6 @@ proc LoadIcons {} {
 ################################################################
 ################################################################
 
-trace info execution exit
 foreach tinfo [trace info execution exit] {
     trace remove execution exit {*}$tinfo
 }
