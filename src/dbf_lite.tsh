@@ -4,16 +4,28 @@ exec tclsh $0 ${1+"$@"}
 
 ##+##########################################################################
 #
-# dbf_lite.tsh -- Quick explorer for *.dbf files:
+# dbf_lite.tsh -- Module to extract data from *.dbf files, plus a quick explorer cli
+# by Keith Vetter 2025-03-09
+#
+# ::DBF::Go filename   -- gets metadata for given dbf file
+# ::DBF::Columns       -- returns metadata on all the columns
+# ::DBF::ReadRow       -- reopens dbf file and extracts data for a given row
+# ::DBF::ReadRecordColumns columnNumbers firstRecord lastRecord  -- reads multiple rows
+#  NB. dbf_lite closes and reopens the dbf file on demand
+#
+# CLI
 # * lists all text column names and values from row given by "--row ##"
 # * if --column gives an index or name, show --count entries from that column
 #
-# by Keith Vetter 2025-03-09
 # https://independent-software.com/dbase-dbf-dbt-file-format.html
 # https://www.dbase.com/Knowledgebase/INT/db7_file_fmt.htm
 # sample files: https://github.com/infused/dbf/tree/main/spec/fixtures
 #
-
+# CLI TODO:
+#  if --columns given then don't show header
+#  if --columns has a bad column, give an error message
+#  rename --columns to --show-columns
+#
 namespace eval ::DBF {
     variable info
     array set info {}
@@ -64,18 +76,6 @@ proc ::DBF::Go {fname} {
 
     return $info(nRows)
 }
-# proc ::DBF::TextColumns {} {
-#     # Returns all text columns of length 5 or more
-#     variable info
-#     if {! $info(initialized)} {error "DBF not yet initialized"}
-#     set colData {}
-#     for {set i 1} {$i <= $info(nCols)} {incr i} {
-#         if {$info(type,$i) eq "C" && $info(len,$i) >= 5} {
-#             lappend colData [list $i $info(name,$i) $info(len,$i) $info(type,$i)]
-#         }
-#     }
-#     return $colData
-# }
 proc ::DBF::Columns {} {
     # Returns all columns: list of {idx name len type}
     variable info
@@ -150,8 +150,8 @@ proc ::DBF::ReadRecordColumns {columnNumbers firstRecord lastRecord} {
 
     set all {}
     unset -nocomplain colData
-    set fin [open $info(fname) rb]
 
+    set fin [open $info(fname) rb]
     try {
         set result {}
         for {set row $firstRecord} {$row <= $lastRecord} {incr row} {
