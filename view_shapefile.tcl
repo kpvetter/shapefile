@@ -16,16 +16,15 @@ exec tclsh $0 ${1+"$@"}
 #
 # TODO:
 #
-# ColorScheme logic for BASE_SCHEME needs to be revised vis-a-vis filtering
 # move wrapping longitude
 # help/about page???
-# option to mask overflow shapes???
 # url links to good shape files outside of Github????
 # some shape files want 2 column keys, e.g. cs_2021_us_county_20m wants county & state names
 # tooltips
 # fractional meridians for shapes under 1 degree in size???
 # Make Splash open file widget the default???
 # UK counties is messed up -- wrong data???
+# neighbors popup or something???
 #
 # DONE meridian lines
 # DONE progress bar or busy mouse
@@ -79,6 +78,7 @@ exec tclsh $0 ${1+"$@"}
 # DONE random base coloring
 # DONE quadrants for shapefiles without any region info
 # DONE Pick DB Column now just a placed frame, ala .splash
+# DONE fixed coloring to work with filtering
 
 package require Tk
 package require fileutil
@@ -283,22 +283,24 @@ proc InstallNewFile {fname trueName} {
     set recordCount [$S(shape) RecordCount]
     append S(fname,pretty2) " -- [Comma $recordCount] Shapes"
 
-    set dbData [ExtractAllDBaseInfo $fname]
-    if {$dbData eq {}} {
-        set dbData [lmap v [range 1 [expr {min($recordCount+1, $S(max,shapes)+1)}]] { list $v "" }]
-    }
-    set recordCount [llength $dbData] ;# May have been filtered
-    if {$recordCount > $S(max,shapes)} {
-        set emsg "Too many shapes [Comma $recordCount]\n"
-        append emsg "Only showing first [Comma $S(max,shapes)] shapes"
-        tk_messageBox -icon warning -message $emsg -type ok -parent .
-        set recordCount $S(max,shapes)
-        set dbData [lrange $dbData 0 $recordCount]
+    set S(dbData) [ExtractAllDBaseInfo $fname]
+    if {$S(dbData) eq {}} {
+        set S(dbData) [lmap v [range 1 [expr {min($recordCount+1, $S(max,shapes)+1)}]] { list $v "" }]
+    } else {
+        set S(dbData) [::Filters::FilterDBaseInfo $S(dbData)]
     }
 
-    set S(dbData) $dbData
+    set numRecords [llength $S(dbData)] ;# May have been filtered
+    if {$numRecords > $S(max,shapes)} {
+        set emsg "Too many shapes [Comma $numRecords]\n"
+        append emsg "Only showing first [Comma $S(max,shapes)] shapes"
+        tk_messageBox -icon warning -message $emsg -type ok -parent .
+        set numRecords $S(max,shapes)
+        set dbData [lrange $dbData 0 $numRecords]
+    }
+
     set S(indexList,all) [lmap x $S(dbData) { lindex $x 0 } ]
-    set S(recordCount) $recordCount
+    set S(numRecords) $numRecords
     set checkboxData {}
     foreach datum $S(dbData) {
         lassign $datum row value
@@ -339,7 +341,6 @@ proc ExtractAllDBaseInfo {fname} {
     if {$column == -1} { return {} }
     set nameData [::DBF::ReadRecordColumns [list $column] 1 -1] ; list
     ;# set nameData [PrettyNames $nameData] -- data is only one column, don't need this
-    set nameData [::Filters::FilterDBaseInfo $nameData]
     return $nameData
 }
 proc PrettyNames {nameData} {
@@ -549,14 +550,14 @@ proc TooltipClear {args} {
 proc DoOneShape {shape idx bbox color} {
     global S
 
-    set name [lindex $S(dbData) $idx-1 1]
 
     lassign [$shape ReadOneRecord $idx] recordNumber type record
     set type [dict get [$shape Header] shapeType]
     set isPolygon [expr {($type % 10) == 5}]
     set isPoint [expr {($type % 10) == 1}]
     set isMultiPoint [expr {($type % 10) == 8}]
-    set name [lindex $S(dbData) $idx-1 1]
+    set n [lsearch -index 0 $S(dbData) $idx]
+    set name [lindex $S(dbData) $n 1]
     if {$name eq ""} {set name "Shape #$idx"}
 
     TooltipClear shape_$idx

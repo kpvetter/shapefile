@@ -17,30 +17,31 @@ namespace eval ::Filters {
 proc ::Filters::SetFilters {avoids needs} {
     variable FILTERS
     set FILTERS(avoid) $avoids
-    set FILTERS(needs) $needs
+    set FILTERS(need) $needs
 }
-proc ::Filters::FilterDBaseInfo {nameData} {
+proc ::Filters::FilterDBaseInfo {dbData} {
     # Checks the first name in each nameDatum to see if it
     # should be avoided or required.
-    # nameData is [list {idx1 name} {idx2 name} ...]
+    # dbData is [list {idx1 name} {idx2 name} ...]
 
     variable FILTERS
 
     set FILTERS(dropped) {}
     set FILTERS(keptout) {}
-    if {$FILTERS(need) eq "" && $FILTERS(avoid) eq ""} { return $nameData }
+    if {$FILTERS(need) eq "" && $FILTERS(avoid) eq ""} { return $dbData }
+
+    set reAvoid [join [lmap x $FILTERS(avoid) { expr {$x eq "" ? "^$" : $x }}] "|"]
+    set reNeed [join [lmap x $FILTERS(need) { expr {$x eq "" ? "^$" : $x }}] "|"]
 
     set result {}
-    foreach v $nameData {
-        # set idx [lindex $v 0]
-        # if {$idx == 11700} { puts hi ; break}
+    foreach v $dbData {
         set name [lindex $v 1]
-        if {$name in $FILTERS(avoid)} {
+        if {[regexp -nocase $reAvoid $name]} {
             lappend FILTERS(dropped) $name
             continue
         }
         if {$FILTERS(need) ne ""} {
-            if {$name ni $FILTERS(need)} {
+            if {! [regexp -nocase $reNeed $name]} {
                 lappend FILTERS(keptout) $name
                 continue
             }
