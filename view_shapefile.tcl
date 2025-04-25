@@ -322,7 +322,7 @@ proc InstallNewFile {fname trueName} {
     update
     bind $S(tree) <KeyPress> {::CheckedListBox::_KeyPress %W %A}
 
-    ::Coloring::NewBaseColorScheme $S(shape) $S(recordCount)
+    ::Coloring::NewBaseColorScheme $S(shape) $S(indexList,all)
 }
 proc ExtractAllDBaseInfo {fname} {
     # Returns list of {row# value} from *.dbf for selected column
@@ -1092,6 +1092,11 @@ proc ::Github::_geturl_followRedirects {url args} {
         set url [eval ::uri::join [array get uri]]
     }
 }
+proc lpick {myList} {
+    set value [lindex $myList [expr {int(rand() * [llength $myList])}]]
+    return $value
+}
+
 proc LoadIcons {} {
     global S
 

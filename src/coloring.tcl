@@ -20,54 +20,50 @@ exec tclsh $0 ${1+"$@"}
 
 namespace eval ::Coloring {
     variable COLORS [list lightyellow cyan orange green pink sienna1 yellow red blue springgreen]
-    variable BASE_SCHEME ;# This holds our coloring scheme
+    variable BASE_SCHEME ;# An array holding our coloring scheme
 }
-proc ::Coloring::NewBaseColorScheme {shape recordCount} {
+proc ::Coloring::NewBaseColorScheme {shape indexList} {
     # Using computed adjacency data, get a proper map coloring
-    variable COLORS
     variable BASE_SCHEME
+    variable COLORS
 
-    set indexList [range 1 $recordCount+1]
+    unset -nocomplain BASE_SCHEME
     unset -nocomplain borders
-    ::Coloring::_ComputeOverlaps $shape $indexList borders
-
-    set BASE_SCHEME [lrepeat [expr {$recordCount + 1}] X]
     set all_colors [range [llength $COLORS]]
+    set colorCount [dict create]
+    foreach colorIdx $all_colors { dict set colorCount $colorIdx 0 }
+
+    ::Coloring::_ComputeOverlaps $shape $indexList borders
+    foreach idx $indexList { set BASE_SCHEME($idx) "X" }
 
     ;# Reorder index list to have shapes with the most neighbors come first
-    set newIndexList [lmap x $indexList { list $x [llength $borders($x)]}]
-    set newIndexList [lsort -integer -index 1 -decreasing $newIndexList]
+    set keyedIndexList [lmap x $indexList { list $x [llength $borders($x)]}]
+    set keyedIndexList [lsort -integer -index 1 -decreasing $keyedIndexList]
 
-    foreach item $newIndexList {
+    foreach item $keyedIndexList {
         lassign $item idx _
 
-        set color ""
-        if {[info exists borders($idx)]} {
-            set exclude [lmap x $borders($idx) { lindex $BASE_SCHEME $x }]
-            set available [lmap x $all_colors { if {$x in $exclude} continue ; set x }]
-            if {$available eq ""} {
-                set who [lindex [IndexListToNameList [list $idx]] 0]
-                puts stderr "$idx '$who' has too many neighbors"
-            } else {
-                set colorIdx [expr {int(rand() * [llength $available])}]
-                set color [lindex $available $colorIdx]
-            }
+        set exclude [lmap x $borders($idx) { set BASE_SCHEME($x) }]
+        set available [lmap x $all_colors { if {$x in $exclude} continue ; set x }]
+
+        if {$available eq ""} {
+            set available $all_colors
+
+            set who [lindex [IndexListToNameList [list $idx]] 0]
+            puts stderr "$idx '$who' has too many neighbors"
         }
-        if {$color eq ""} {
-            set color [lindex $all_colors [expr {$idx % [llength $all_colors]}]]
-        }
-        lset BASE_SCHEME $idx $color
+        set colorIdx [lpick $available]
+        set colorIdx [::Coloring::_LeastUsedColor $colorCount $available]
+
+        dict incr colorCount $colorIdx
+        set BASE_SCHEME($idx) $colorIdx
     }
 }
 proc ::Coloring::GetColor {idx nonce} {
     variable COLORS
     variable BASE_SCHEME
 
-    if {$idx > [llength $BASE_SCHEME]} {   ;# Possibly due to filtering
-        set colorIdx [expr {int(rand() * [llength $COLORS])}]
-    } else {
-        set colorIdx [expr {($nonce + [lindex $BASE_SCHEME $idx]) % [llength $COLORS]}]
-    }
+    set colorIdx [expr {($nonce + $BASE_SCHEME($idx)) % [llength $COLORS]}]
     set color [lindex $COLORS $colorIdx]
     return $color
 }
@@ -109,4 +105,23 @@ proc ::Coloring::_OverlapBBox {bbox1 bbox2} {
     if {$top2 < $bottom1} { return False }
     if {$bottom2 > $top1} { return False }
     return True
+}
+proc ::Coloring::_LeastUsedColor {colorCount available} {
+    # Given dictionary of color usage, pick the least used one
+
+    set rest [lassign $available first]
+    set minValue [dict get $colorCount $first]
+    set minWho [list $first]
+
+    foreach colorIdx $rest {
+        set value [dict get $colorCount $colorIdx]
+        if {$value < $minValue} {
+            set minValue $value
+            set minWho [list $colorIdx]
+        } elseif {$value == $minValue} {
+            lappend minWho $colorIdx
+        }
+    }
+    set who [lpick $minWho]
+    return $who
 }
