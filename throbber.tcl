@@ -2,56 +2,38 @@
 # Restart with tcl: -*- mode: tcl; tab-width: 8; -*- \
 exec tclsh $0 ${1+"$@"}
 
-package require Tk
-
+##+##########################################################################
+#
+# throbber.tcl -- Animates a text spinner
+# by Keith Vetter 2025-04-26
+#
 namespace eval ::Throbber {
     variable T
     set T(dots) { ⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏ }
-    set T(delay) 80
+    set T(delay,ms) 80
     set T(varName) ""
-    set T(index) 0
-    set T(aid) ""
+    set T(index) -1
+    set T(last) 0
 }
 
 proc ::Throbber::Start {varName} {
     variable T
     set T(varName) $varName
     set T(index) -1
-
+    set T(last) 0
     ::Throbber::Step
 }
 proc ::Throbber::Step {} {
+    # Gets called repeatedly but only update throbber after
+    # $T(delay,ms) have elapsed since the last update
     variable T
+
+    set now [clock milliseconds]
+    if {$now - $T(last) < $T(delay,ms)} return
+    set T(last) $now
 
     set T(index) [expr {($T(index) + 1) % [llength $T(dots)]}]
-    upvar 1 $T(varName) var
+    upvar \#0 $T(varName) var
     set var [lindex $T(dots) $T(index)]
     update
-
-    set T(aid) [after $T(delay) ::Throbber::Step]
-}
-proc ::Throbber::Stop {} {
-    variable T
-    after cancel $T(aid)
-}
-if {[info exists argv0] && [file tail [info script]] eq [file tail $argv0]} {
-    set S(title_font) [concat [font actual TkDefaultFont] -size 48 -weight bold]
-    set S(text) ""
-
-    "proc" Go {} {
-        global S
-        toplevel .top
-        wm geom .top +100+100
-        ::ttk::label .top.l1 -text "Testing throbber" -font $S(title_font)
-        ::ttk::label .top.l2 -textvar S(text) -font $S(title_font)
-
-        ::ttk::button .top.b1 -text "Start" -command [list ::Throbber::Start S(text)]
-        ::ttk::button .top.b2 -text "Stop" -command [list ::Throbber::Stop]
-
-        grid .top.l1 -
-        grid .top.l2 -
-        grid .top.b1 .top.b2
-        tkwait window .top
-    }
-    Go
 }
