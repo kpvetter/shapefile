@@ -76,6 +76,8 @@ proc ::Coloring::_ComputeOverlaps {shape indexList &result} {
     unset -nocomplain MEM
 
     foreach idx1 $indexList {
+        ::Throbber::Step
+
         set bbox1 [$shape BoundingBox $idx1]
         set result($idx1) {}
 

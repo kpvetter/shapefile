@@ -16,6 +16,10 @@ exec tclsh $0 ${1+"$@"}
 #
 # TODO:
 #
+# Draw New should update progress even if no files were drawn
+# find time delay on loading big shapefiles
+# post loading time w/o time spent waiting for user input
+# delay putting up "Loading Shapefile" and check if it's been deleted
 # move wrapping longitude
 # help/about page???
 # url links to good shape files outside of Github????
@@ -95,6 +99,7 @@ source [file join [file dirname $argv0] src/coloring.tcl]
 source [file join [file dirname $argv0] src/dbf_lite.tsh]
 source [file join [file dirname $argv0] src/filters.tcl]
 source [file join [file dirname $argv0] src/regions.tcl]
+source [file join [file dirname $argv0] src/throbber.tcl]
 
 set S(width) 1024
 set S(height) 655
@@ -123,6 +128,7 @@ set S(icon,usa) usa_icon.png
 set S(canvas,bg) gray90
 set S(tempdir) ""
 set S(dbData) {}
+set S(throbber) ""
 
 set S(beta) False
 if {$::tcl_platform(user) eq "kvetter"} { set S(beta) True }
@@ -221,6 +227,35 @@ proc ControlWindow {w} {
     grid x $ww.draw3 x $ww.clear3 x -row 3 -sticky ew
     grid columnconfig $ww {0 2 4} -weight 1
 }
+proc @time_function {p pname pargs lambda} {
+    # KPV delete for production
+    if {$p ne "proc"} { error "bad synax: $p != 'proc'"}
+    proc $pname $pargs "
+        try {
+            set start \[clock microseconds\]
+            set argVals \[lmap var {$pargs} {set \$var}]
+            return \[apply {{$pargs} {$lambda}} {*}\$argVals\]
+        } finally {
+            set pretty \[PrettyTime \[expr {\[clock microseconds\] - \$start}\]\]
+            Progress \"Loading shapefile took \$pretty\"
+        }
+     "
+}
+proc PrettyTime {ms} {
+    if {$ms < 1000} {
+        return "[Comma $ms] microseconds"
+    }
+    if {$ms < 1000*1000} {
+        set ticks [expr {$ms / 1000.0}]
+        set units milliseconds
+    } else {
+        set ticks [expr {$ms / 1000.0 / 1000.0}]
+        set units seconds
+    }
+    return [format "%.1f %s" $ticks $units]
+}
+
+
 proc GetNewFile {} {
     global S
 
@@ -238,7 +273,9 @@ proc GetNewFile {} {
     if {$fname eq ""} return
     InstallZipFile $fname
 }
+@time_function \
 proc InstallZipFile {zipName} {
+    Progress "Loading shapefile [file tail $zipName]..."
     if {[file extension $zipName] eq ".zip"} {
         set fname [::Zip::Open $zipName]
         if {$fname ne ""} {
@@ -287,7 +324,7 @@ proc InstallNewFile {fname trueName} {
     if {$S(dbData) eq {}} {
         set S(dbData) [lmap v [range 1 [expr {min($recordCount+1, $S(max,shapes)+1)}]] { list $v "" }]
     } else {
-        set S(dbData) [::Filters::FilterDBaseInfo $S(dbData)]
+        ;# set S(dbData) [::Filters::FilterDBaseInfo $S(dbData)]
     }
 
     set numRecords [llength $S(dbData)] ;# May have been filtered
@@ -296,12 +333,14 @@ proc InstallNewFile {fname trueName} {
         append emsg "Only showing first [Comma $S(max,shapes)] shapes"
         tk_messageBox -icon warning -message $emsg -type ok -parent .
         set numRecords $S(max,shapes)
-        set dbData [lrange $dbData 0 $numRecords]
+        set S(dbData) [lrange $S(dbData) 0 $numRecords]
     }
 
+    ShowLoadingStatus "Loading Shapefile"
     set S(indexList,all) [lmap x $S(dbData) { lindex $x 0 } ]
     set S(numRecords) $numRecords
     set checkboxData {}
+
     foreach datum $S(dbData) {
         lassign $datum row value
 
@@ -317,14 +356,32 @@ proc InstallNewFile {fname trueName} {
         }
         lappend checkboxData [list $value $row]
     }
-
     ::CheckedListBox::Clear $S(tree)
     ::CheckedListBox::AddManyItems $S(tree) $checkboxData
     ::Regions::InstallBlocs
-    update
     bind $S(tree) <KeyPress> {::CheckedListBox::_KeyPress %W %A}
 
     ::Coloring::NewBaseColorScheme $S(shape) $S(indexList,all)
+    destroy .status
+    update
+}
+proc ShowLoadingStatus {msg} {
+    global S
+
+    destroy .status
+    ::ttk::frame .status -relief solid -borderwidth 2 -padding .5i
+    ::ttk::label .status.msg -text $msg -font $S(title_font)
+    ::ttk::label .status.throb -textvariable S(throbber) -font $S(title_font) -width 1
+    set S(throbber) "\u283f"
+    ::Throbber::Start S(throbber)
+
+    grid .status.msg .status.throb
+    after 1000 {
+        catch {
+            place .status -in .c -relx .5 -rely .2 -anchor n
+            update
+        }
+    }
 }
 proc ExtractAllDBaseInfo {fname} {
     # Returns list of {row# value} from *.dbf for selected column
@@ -719,7 +776,7 @@ proc CanvasToIndexList {} {
 proc DoSelectedShapes {how} {
     global S
 
-    set start [clock seconds]
+    set start [clock microseconds]
     if {$how eq "clear"} {
         TooltipClear shape meridians
         .c delete shape meridians
@@ -760,8 +817,8 @@ proc DoSelectedShapes {how} {
     update
     . config -cursor {}
     .c config -cursor {}
-    set duration [expr {[clock seconds] - $start}]
-    Progress "Drew [Plural $total shape] in [Plural $duration second]"
+    set duration [expr {[clock microseconds] - $start}]
+    Progress "Drew [Plural $total shape] in [PrettyTime $duration]"
     update
 }
 proc DrawBBox {} {
@@ -1118,11 +1175,12 @@ proc LoadIcons {} {
 ################################################################
 ################################################################
 
-foreach tinfo [trace info execution exit] {
-    trace remove execution exit {*}$tinfo
+foreach func {AtExit xx} {
+    foreach tinfo [trace info execution $func] {
+        trace remove execution $func {*}$tinfo
+    }
+    catch {trace add execution exit enter $func}
 }
-trace add execution exit enter AtExit
-trace add execution xx enter AtExit
 
 DoDisplay
 Splash

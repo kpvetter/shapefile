@@ -115,7 +115,7 @@ proc ::Regions::Quadrants {which} {
         lappend bboxes [list $idx {*}[dict get $meta box]]
     }
 
-    set half [expr {$S(recordCount) / 2}]
+    set half [expr {[llength $S(indexList,all)] / 2}]
     lassign $SIDES($which) index direction
     set dir [expr {$direction eq "-" ? "-decreasing" : "-increasing"}]
     set items [lrange [lsort -real $dir -index $index $bboxes] 0 $half]
